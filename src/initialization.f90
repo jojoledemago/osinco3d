@@ -116,7 +116,7 @@ contains
     namelist /VisuParameters/ nfre, nsve, xpro, ypro, zpro
     namelist /InitInflow/ iin, inflow_noise, ici, init_noise
 
-    open(unit=10, file='paramaters.o3d', status='old', action='read', iostat=io_status)
+    open(unit=10, file='parameters.o3d', status='old', action='read', iostat=io_status)
     if (io_status /= 0) then
        print *, 'Error opening configuration file.'
        stop

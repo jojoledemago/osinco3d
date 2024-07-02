@@ -30,7 +30,7 @@ Edit the paramters file: `parameters.o3d`
 ```sh
 ./osinco3d.app
 ```
-## Paramètres
+## Parameters
 
 ### FlowParam
 - `typesim`: type of simulation
@@ -41,7 +41,7 @@ Edit the paramters file: `parameters.o3d`
     . 4: Mixing Layer
 - `l0`: caracterise size of the flow
 - `u0`: caracterise velocity of the flow
-- `re`: Reynolds number of the flow (re = xnu*u0/l0)
+- `re`: Reynolds number of the flow [re = \frac{u_0 \cdot l_0}{\nu}]
 
 ### Domain
 - `nx`, `ny`, `nz`: number of discretisation points

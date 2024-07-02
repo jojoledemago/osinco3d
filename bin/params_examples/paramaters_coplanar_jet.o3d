@@ -1,0 +1,81 @@
+! -*- mode: f90 -*-
+
+!<--------------->!
+&FlowParam
+!<--------------->!
+typesim = 4  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplanar Jet, 5=Mixing Layer
+l0 = 1. 
+u0 = 1.
+re = 3000.
+ratio = 3.00
+/End
+
+!<--------------->!
+&Domain
+!<--------------->!
+nx = 105
+ny = 321
+nz = 81
+
+xlx =  4.4
+yly =  8.
+zlz =  2.00
+
+x0 =  0.
+y0 = -4
+z0 = -1.
+/End
+
+!<--------------->!
+&BoundaryConditions
+!<--------------->!
+nbcx1 = 0
+nbcxn = 0
+nbcy1 = 0
+nbcyn = 0
+sim2d = 0
+/End
+
+!<--------------->!
+&AdvanceTime
+!<--------------->!
+itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
+cfl = 0.17
+irestart = 0
+itstart = 1
+itstop = 10000
+/End
+
+!<--------------->!
+&PoissonEq
+!<--------------->!
+omega = 1.5
+eps = 1.e-6
+kmax = 4000
+/End
+
+!<--------------->!
+&Scalar
+!<--------------->!
+nscr = 0 !> 1 for scalar equation resolution 
+sc = 1. !> Schmidt number
+/End
+
+!<--------------->!
+&VisuParameters
+!<--------------->!
+nsve = 2000
+nfre = 500
+xpro = 4.2
+ypro = 0.75
+zpro = 0.
+/End
+
+!<--------------->!
+&InitInflow
+!<--------------->!
+iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
+inflow_noise = 0.03 !> Turbulence intensity !! Inflow condition
+ici = 3 !> Initial conditions (0: nothing, 1: classic, 2: turbulent, 3:both)
+init_noise = 0.01 !> Turbulence intensity (1=100%) !! Intiale condition
+/End

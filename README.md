@@ -30,22 +30,29 @@ Edit the paramters file: `parameters.o3d`
 ```sh
 ./osinco3d.app
 ```
-
 ## Paramètres
 
 ### FlowParam
+- typesim: type of simulation
+    * 0: read fields.bin file
+    * 1: Convected vortex
+    * 2: Taylor-Green vortex
+    * 3: Planar Jet
+    * 4: Mixing Layer
+- l0: caracterise size of the flow
+- u0: caracterise velocity of the flow
+- re: Reynolds number of the flow (re = xnu*u0/l0)
 
-```fortran
-&FlowParam
-typesim = 2  ! Type de simulation (0=lecture d'un fichier fields.bin, 1=vortex convecté, 2=vortex de Taylor-Green, 3=jet plan, 4=couche de mélange)
-l0 = 1.       ! Longueur caractéristique de l'écoulement
-u0 = 1.       ! Vitesse caractéristique de l'écoulement
-re = 1000.    ! Nombre de Reynolds
-ratio = 1.00  ! Ratio (à préciser)
-/End
-```
+### Domain
+- nx, ny, nz: number of discretisation points
+- xlx, yly, zlz: sizes of the domain
+- x0, y0, z0: origin of the thre direction
 
-
+### BoundaryConditions
+- nbcx1, nbcxn: BC in x(1) and x(nx)
+- nbcy1, nbcyn: BC in y(1) and y(nx)
+- nbcz1, nbczn: BC in z(1) and z(nx)
+- 
 ## Contributing
 
 I would like to parallelize the code using the MPI library. Therefore, I'm looking for someone to help me with this task.

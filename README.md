@@ -52,7 +52,7 @@ Edit the paramters file: `parameters.o3d`
 - nbcx1, nbcxn: BC in x(1) and x(nx)
 - nbcy1, nbcyn: BC in y(1) and y(nx)
 - nbcz1, nbczn: BC in z(1) and z(nx)
-- 
+
 ## Contributing
 
 I would like to parallelize the code using the MPI library. Therefore, I'm looking for someone to help me with this task.

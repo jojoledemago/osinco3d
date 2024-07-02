@@ -41,7 +41,7 @@ Edit the paramters file: `parameters.o3d`
     . 4: Mixing Layer
 - `l0`: caracterise size of the flow
 - `u0`: caracterise velocity of the flow
-- `re`: Reynolds number of the flow [re = \frac{u_0 \cdot l_0}{\nu}]
+- `re`: Reynolds number of the flow [re = \frac{u_0 \cdot l_0}{\nu}](https://latex.codecogs.com/png.latex?re%20%3D%20%5Cfrac%7Bu_0%20%5Ccdot%20l_0%7D%7B%5Cnu%7D)
 
 ### Domain
 - `nx`, `ny`, `nz`: number of discretisation points

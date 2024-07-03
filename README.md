@@ -50,8 +50,8 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 
 ### Domain
 - `nx`, `ny`, `nz`: number of discretisation points  in each direction ($x$, $y$, $z$)
-- `xlx`, `yly`, `zlz`: sizes of the computational domain in each directionthe domain 
-- `x0`, `y0`, `z0`: origin of the computational domain in each directionthe thre direction
+- `xlx`, `yly`, `zlz`: sizes of the computational domain in each direction
+- `x0`, `y0`, `z0`: origin of the computational domain in each direction
 
 ### BoundaryConditions
 - `nbcx1`, `nbcxn`: BC for x-direction at faces 1 $x(1)$ and nx $x(nx)$

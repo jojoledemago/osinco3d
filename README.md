@@ -66,10 +66,16 @@ Edit the paramters file: `parameters.o3d`
 - `itstart`: first time index 
 - `itstop`: last time index
 
+### PoissonEq
+- `omega`: SOR Coefficient, theorical optimised : $\omega = 2./(1+np.sin(np.pi \cdot Lx/Nx))$
+- `eps`: convergence criterion
+- `kmax`: maximum number of iteration
+
 ### Scalar
 - `nscr`: 1 for scalar equation resolution 
 - `sc`: Schmidt number defined as $Sc = \frac{\nu}{D}$
 
+### 
 
 ## Contributing
 

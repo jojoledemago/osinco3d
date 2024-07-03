@@ -67,7 +67,7 @@ Edit the paramters file: `parameters.o3d`
 - `itstop`: last time index
 
 ### PoissonEq
-- `omega`: SOR Coefficient, theorical optimised : $\omega = \frac{2}/\frac{1+\sin(\pi \cdot Lx/Nx)}$
+- `omega`: SOR Coefficient, theorical optimised : $\omega = \frac{2}{1+\sin(\pi \cdot Lx/Nx)}$
 - `eps`: convergence criterion
 - `kmax`: maximum number of iteration
 

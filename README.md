@@ -61,13 +61,13 @@ Edit the paramters file: `parameters.o3d`
     - 1: Euler
     - 2: Two order Adams-Bashforth
     - 3: Three order Adams-Bashforth
-- `cfl`: Courant-Friedrichs-Lewy (CFL) number, a criterion for numerical stability, defined as $\text{CFL} = \frac{u \cdot \Delta t}{\Delta x}$
+- `cfl`: Courant-Friedrichs-Lewy (CFL) number, a criterion for numerical stability, defined as $\text{CFL} = \frac{u_0 \cdot \Delta t}{\Delta x}$
 - `irestart`: 1 for a restart simulation with `typesim` = 0 else 0
 - `itstart`: first time index 
 - `itstop`: last time index
 
 ### PoissonEq
-- `omega`: SOR Coefficient, theorical optimised : $\omega = 2./(1+\sin(\pi \cdot Lx/Nx))$
+- `omega`: SOR Coefficient, theorical optimised : $\omega = \frac{2}/\frac{1+\sin(\pi \cdot Lx/Nx)}$
 - `eps`: convergence criterion
 - `kmax`: maximum number of iteration
 

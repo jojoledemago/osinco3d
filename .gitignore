@@ -1,0 +1,12 @@
+# Ignore all files in src/build
+/src/build/*
+
+# Ignore all files in bin/images
+/bin/images/*
+
+# Ignore all files in bin/outputs
+/bin/outputs/*
+
+# Ignore the specific file bin/residus.dat
+/bin/residus.dat
+

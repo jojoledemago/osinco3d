@@ -59,7 +59,7 @@ kmax = 10000
 !<--------------->!
 &Scalar
 !<--------------->!
-nscr = 0 !> 1 for scalar equation resolution 
+nscr = 1 !> 1 for scalar equation resolution 
 sc = 1. !> Schmidt number
 /End
 

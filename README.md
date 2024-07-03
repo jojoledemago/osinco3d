@@ -18,6 +18,7 @@ This project is a Fortran90 Computational Fluid Dynamics (CFD) code designed to 
   - **4th order**: Second derivatives.
   - **2nd order**: Poisson equation resolution.
 - **Poisson equation solver**: Successive Over-Relaxation (SOR) method.
+- **Boundary conditions**: Periodic or slip conditions in all directions and Dirichlet conditions in the x-direction only.
 - **Visualization**:
   - **2D**: Using Gnuplot.
   - **3D**: Using ParaView (XDMF format).

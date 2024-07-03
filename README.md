@@ -3,10 +3,27 @@
 This project is a Fortran90 Computational Fluid Dynamics (CFD) code designed to solve the 3D Navier-Stokes equations for incompressible flow using a high-order finite difference method.
 
 ## Table of Contents 
+- [Summary](#summary)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Contributing](#contributing)
 - [Parameters](#parameters)
+
+## Summary
+
+- **Prediction-correction method**: Utilizes the Chorin method.
+- **Time integration schemes**: Euler, Adams-Bashforth 2nd order (AB2), or Adams-Bashforth 3rd order (AB3).
+- **Spatial discretization schemes**: Finite differences.
+  - **6th order**: First derivatives.
+  - **4th order**: Second derivatives.
+  - **2nd order**: Poisson equation resolution.
+- **Poisson equation solver**: Successive Over-Relaxation (SOR) method.
+- **Visualization**:
+  - **2D**: Using Gnuplot.
+  - **3D**: Using ParaView (XDMF format).
+- **Programming language**: Fortran90.
+- **Configuration**: Single parameter file `parameters.o3d`.
+- **Executable**: The executable file is named `osinco3d.app`.
 
 ## Installation
 
@@ -65,8 +82,8 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 ### AdvanceTime
 - `itscheme`: time integration scheme
     - 1: Euler
-    - 2: Two order Adams-Bashforth
-    - 3: Three order Adams-Bashforth
+    - 2: second-order Adams-Bashforth
+    - 3: third-order Adams-Bashforth
 - `cfl`: Courant-Friedrichs-Lewy (CFL) number, a criterion for numerical stability, defined as $\text{CFL} = \frac{u_0 \cdot \Delta t}{\Delta x}$
 - `irestart`
     - 1: Restart simulation from `fields.bin` file (only valid for `typesim = 0`)

@@ -52,6 +52,7 @@ contains
     integer :: i, j, k
 
     print *, "* Condition Initiale for a convected vortex"
+    if (ici == 1) print *, "* No excitation of the initial condition in the case of TGV"
     ! Vortex parameters (could be inputs)
     cv = u0   ! Max velocity (example value)
     rv = l0   ! Vortex radius (example value)
@@ -116,6 +117,7 @@ contains
     real(kind=8) :: twopi, y_length, z_length
 
     print *, "* Condition Initiale for a the Taylor-Green vortex"
+    if (ici == 1) print *, "* No excitation of the initial condition in the case of TGV"
 
     twopi = 2.d0 * acos(-1.d0)
     y_length = y(ny) - y(1)

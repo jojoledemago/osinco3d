@@ -79,6 +79,7 @@ The `parameters.o3d` file contains various parameters that control the simulatio
     - 0: Periodic
     - 1: Free Slip
     - 2: Dirichlet
+- `sim2d`: Set 1 to execute a 2D simulation
 
 ### AdvanceTime
 - `itscheme`: time integration scheme

@@ -6,7 +6,7 @@ FFLAGS = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics
 
 # Dossiers de sortie
 SRCDIR = /home/chupin/perso/cfd/osinco3d/src
-OBJDIR = /home/chupin/perso/cfd/osinco3d/src/obj
+OBJDIR = /home/chupin/perso/cfd/osinco3d/src/build
 EXEDIR = /home/chupin/perso/cfd/osinco3d/bin
 
 # Noms des fichiers sources

@@ -346,7 +346,7 @@ contains
     real(kind=8), intent(in) :: ux(nx, ny, nz), uy(nx, ny, nz), uz(nx, ny, nz), pp(nx, ny, nz)
     real(kind=8), intent(in) :: time
 
-    character(len=17), parameter :: filename = "ouputs/fields.bin"
+    character(len=10), parameter :: filename = "fields.bin"
     integer, parameter :: iunit = 101
     integer :: ios
 

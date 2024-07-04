@@ -128,7 +128,7 @@ contains
              ux(i,j,k) =  ratio * u0/l0 * sin(x(i)) * cos(y(j))* cos(z(k))
              uy(i,j,k) = -ratio * u0/l0 * cos(x(i)) * sin(y(j))* cos(z(k))
              uz(i,j,k) = 0.d0
-             pp(i,j,k) = 0.d0
+             pp(i,j,k) = 0.0625d0 * (cos(2.d0*x(i)) + cos(2.d0*y(j)) + cos(2.d0*y(k)) + 2.d0) !https://cfd.ku.edu/hiocfd/case_c3.5.pdf
              if (nscr == 1) then
                 phi(i,j,k) = 0.5d0 * &
                      (sin(twopi * n_jets_y * (y(j) - y(1)) / y_length) * &                  

@@ -3,7 +3,7 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 0  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Mixing Layer
+typesim = 2  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Mixing Layer
 l0 = 1. 
 u0 = 1.
 re = 1000.
@@ -13,9 +13,9 @@ ratio = 1.00
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 201
-ny = 201
-nz = 201
+nx = 257
+ny = 257
+nz = 257
 
 xlx = 3.141592653589793
 yly = 3.141592653589793
@@ -51,15 +51,15 @@ itstop = 40000
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.906 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
-eps = 1.e-7
+omega = 1.926 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+eps = 1.e-5
 kmax = 10000
 /End
 
 !<--------------->!
 &Scalar
 !<--------------->!
-nscr = 1 !> 1 for scalar equation resolution 
+nscr = 0 !> 1 for scalar equation resolution 
 sc = 1. !> Schmidt number
 /End
 

@@ -21,7 +21,7 @@ set tics out # Tics vers l'exterieur
 #unset ytics
 unset ztics
 #splot 'outputs/solution_xy.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9))
-splot 'outputs/solution_xy.dat' u 1:2:10
+splot 'outputs/solution_xy.dat' u 1:2:6
 #splot 'outputs/solution_xz.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9))
 #splot 'outputs/solution_xz.dat' u 1:2:5
 #splot 'outputs/solution_yz.dat' u 2:1:(sqrt($7*$7+$8*$8+$9*$9))

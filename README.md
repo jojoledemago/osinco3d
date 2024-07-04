@@ -49,8 +49,7 @@ Edit the paramters file: `parameters.o3d`
 ```
 ## Contributing
 
-I would like to parallelize the code using the MPI library. Therefore, I'm looking for someone to help me with this task.
-I would like implement a non-reflective outflow condition in $x(nx)$, I'm looking for someone to help me with this task.
+I would like to parallelize the code using the MPI library and to implement a non-reflective outflow condition in $x(nx)$. Therefore, I'm looking for someone to help me with this taskes.
 
 ## Parameters
 The `parameters.o3d` file contains various parameters that control the simulation. Here's a description of each parameter group:

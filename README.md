@@ -60,7 +60,8 @@ The `parameters.o3d` file contains various parameters that control the simulatio
     - 1: Convected vortex
     - 2: Taylor-Green vortex
     - 3: Planar Jet
-    - 4: Mixing Layer
+    - 4: Co-planar Jet
+    - 5: Mixing Layer
 - `l0`: characteristic size of the flow field
 - `u0`: characteristic velocity of the flow field
 - `re`: Reynolds number of the flow, defined as $Re = \frac{u_0 \cdot l_0}{\nu}$ (nu is the kinematic viscosity)

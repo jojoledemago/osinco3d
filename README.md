@@ -16,7 +16,7 @@ This project is a Fortran90 Computational Fluid Dynamics (CFD) code designed to 
 - **Spatial discretization schemes**: Finite differences.
   - **First derivatives**: 6th order.
   - **Second derivatives**: 4th order.
-  - **Poisson equation solver**: Successive Over-Relaxation (SOR) method with a 2nd order finite differences scheme.
+- **Poisson equation solver**: Successive Over-Relaxation (SOR) method with a 2nd order finite differences scheme.
 - **Boundary conditions**: Periodic or free-slip conditions in all directions and Dirichlet conditions in the x-direction only.
 - **Visualization**:
   - **2D**: Using Gnuplot.

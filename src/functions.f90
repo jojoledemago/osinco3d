@@ -108,6 +108,41 @@ contains
 
     ! Calculate the average
     avg = sum / (ny * nz)
+
   end function average_2d_array
+
+  function average_3d_array(tab) result(avg)
+    !> Calculate the average value of a 3D array
+    !>
+    !> INPUT:
+    !> tab(nx, ny, nz) : 3D array of real numbers
+    !>
+    !> OUTPUT:
+    !> avg         : Average value of the 3D array
+
+    real(kind=8), intent(in) :: tab(:,:,:)
+    real(kind=8) :: avg
+    integer :: nx, ny, nz, i, j, k
+    real(kind=8) :: sum
+
+    nx = size(tab, 1)
+    ny = size(tab, 2)
+    nz = size(tab, 3)
+
+    sum = 0.0d0
+
+    ! Calculate the sum of all elements in the 3D array
+    do i = 1, nx
+       do j = 1, ny
+          do k = 1, nz
+             sum = sum + tab(i, j, k)
+          end do
+       end do
+    end do
+
+    ! Calculate the average
+    avg = sum / (nx * ny * nz)
+
+  end function average_3d_array
 
 end module functions

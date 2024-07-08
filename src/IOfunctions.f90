@@ -463,5 +463,111 @@ contains
 
   end subroutine check_directories
 
+  subroutine write_statistics(t, ek, epst, eps, dzeta, usm, vsm, wsm, &
+       duxdx_mean, duxdy_mean, duxdz_mean, &
+       duydx_mean, duydy_mean, duydz_mean, &
+       duzdx_mean, duzdy_mean, duzdz_mean)
+
+    !> Write statistical quantities of the flow field to a file.
+    !>
+    !> INPUT:
+    !>   t          - Time
+    !>   ek         - Kinetic energy
+    !>   epst       - Turbulent dissipation rate
+    !>   eps        - Dissipation rate
+    !>   dzeta      - Enstrophy
+    !>   usm        - Mean velocity in x-direction
+    !>   vsm        - Mean velocity in y-direction
+    !>   wsm        - Mean velocity in z-direction
+    !>   duxdx_mean - Mean derivative of ux with respect to x
+    !>   duxdy_mean - Mean derivative of ux with respect to y
+    !>   duxdz_mean - Mean derivative of ux with respect to z
+    !>   duydx_mean - Mean derivative of uy with respect to x
+    !>   duydy_mean - Mean derivative of uy with respect to y
+    !>   duydz_mean - Mean derivative of uy with respect to z
+    !>   duzdx_mean - Mean derivative of uz with respect to x
+    !>   duzdy_mean - Mean derivative of uz with respect to y
+    !>   duzdz_mean - Mean derivative of uz with respect to z
+    !>
+    !> OUTPUT:
+    !>   Appends the statistical quantities to the file "outputs/stats.dat".
+
+    real(kind=8), intent(in) :: t, ek, epst, eps, dzeta, usm, vsm, wsm
+    real(kind=8), intent(in) :: duxdx_mean, duxdy_mean, duxdz_mean
+    real(kind=8), intent(in) :: duydx_mean, duydy_mean, duydz_mean
+    real(kind=8), intent(in) :: duzdx_mean, duzdy_mean, duzdz_mean
+
+    ! Declare the variables
+    integer :: iunit, ios
+    parameter (iunit = 10) ! File unit number
+
+    ! Open the file in append mode
+    open(unit=iunit, file="outputs/stats.dat", status="unknown", position="append", iostat=ios)
+
+    ! Check if the file was successfully opened
+    if (ios /= 0) then
+       print *, "Error: Unable to open the file 'outputs/stats.dat'"
+       return
+    end if
+
+    ! Write the statistics to the file
+    write(iunit, '(17es21.12)') t, ek, epst, eps, dzeta, usm, vsm, wsm, &
+         duxdx_mean, duxdy_mean, duxdz_mean, &
+         duydx_mean, duydy_mean, duydz_mean, &
+         duzdx_mean, duzdy_mean, duzdz_mean
+
+    ! Close the file
+    close(iunit)
+
+    return
+
+  end subroutine write_statistics
+
+  subroutine header_stats()
+    integer :: i, ierr
+    ! Define the header lines
+    character(len=200) :: header(17)
+
+    header(1)  = "# Column 1  : time t"
+    header(2)  = "# Column 2  : kinetic energy E_k [=(u^2+v^2+w^2)/2]"
+    header(3)  = "# Column 3  : dissipation epsilon_t [=-dE_k/dt]"
+    header(4)  = "# Column 4  : dissipation epsilon [= nu ((du/dx)^2+(du/dy)^2+" // &
+         "(du/dz)^2+(dv/dx)^2+(dv/dy)^2+(dv/dz)^2+" // &
+         "(dw/dx)^2+(dw/dy)^2+(dw/dz)^2)]"
+    header(5)  = "# Column 5  : enstrophy Dzeta [=2 nu epsilon]"
+    header(6)  = "# Column 6  : mean square u^2"
+    header(7)  = "# Column 7  : mean square v^2"
+    header(8)  = "# Column 8  : mean square w^2"
+    header(9)  = "# Column 9  : mean square (du/dx)^2"
+    header(10) = "# Column 10 : mean square (du/dy)^2"
+    header(11) = "# Column 11 : mean square (du/dz)^2"
+    header(12) = "# Column 12 : mean square (dv/dx)^2"
+    header(13) = "# Column 13 : mean square (dv/dy)^2"
+    header(14) = "# Column 14 : mean square (dv/dz)^2"
+    header(15) = "# Column 15 : mean square (dw/dx)^2"
+    header(16) = "# Column 16 : mean square (dw/dy)^2"
+    header(17) = "# Column 17 : mean square (dw/dz)^2"
+
+    ! Open the file for writing
+    open(unit=10, file='outputs/stats.dat', status='replace', action='write', &
+         form='formatted', iostat=ierr)
+
+    ! Check for errors in opening the file
+    if (ierr /= 0) then
+       print *, "Error opening file outputs/stats.dat"
+       return
+    endif
+
+    ! Write the header to the file
+    do i = 1, 17
+       write(10, '(A)') trim(header(i))
+    end do
+
+    ! Close the file
+    close(10)
+
+  end subroutine header_stats
+
+
 end module IOfunctions
 

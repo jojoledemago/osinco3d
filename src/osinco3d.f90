@@ -9,6 +9,7 @@ program osinco3d
 
   call print_osinco3d_title()
   call check_directories()
+  call header_stats()
   call parameters()
   call print_parameters()
   call variables()
@@ -41,7 +42,7 @@ program osinco3d
        dx, dy, dz, nx, ny, nz, 0)
   divu_stats = function_stats(divu, nx, ny, nz)
   call print_divu_statistics(divu_stats, .false.)
-  call visu(rotz(:,:,kpro), x, y, nx, ny, num)
+  call visu(phi(:,:,kpro), x, y, nx, ny, num)
 
   call visualize_2d(x, y, nx, ny, &
        ux(:,:,kpro), uy(:,:,kpro), uz(:,:,kpro), pp(:,:,kpro), &
@@ -128,7 +129,7 @@ program osinco3d
              divu(:,jpro,:), phi(:,jpro,:), time, "outputs/solution_xz.dat")
         call write_all_data(ux, uy, uz, rotx, roty, rotz, q_criterion, pp, phi, numx, nscr)
         call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr)
-        call visu(rotz(:,:,kpro), x, y, nx, ny, num)
+        call visu(phi(:,:,kpro), x, y, nx, ny, num)
      end if
      if (modulo(itime, 25) == 0) then
         call calculate_residuals(ux, uy, uz, &
@@ -140,6 +141,8 @@ program osinco3d
              uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
         call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
              uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
+        call statistics_calc(e_k, ux, uy, uz, nx, ny, nz, &
+             dx, dy, dz, dt, re, time)
      end if
      if (itime == nsve) then
         call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)

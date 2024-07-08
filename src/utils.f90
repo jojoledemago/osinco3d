@@ -291,5 +291,102 @@ contains
 
   end subroutine calcul_cpu_time
 
+  subroutine statistics_calc(e_k, ux, uy, uz, nx, ny, nz, &
+       dx, dy, dz, dt, re, t)
+    !> Calculate various statistical quantities of the flow field, including kinetic energy,
+    !> dissipation rate, and enstrophy.
+    !>
+    !> INPUT:
+    !>   ux, uy, uz  - Velocity components (3D arrays)
+    !>   nx, ny, nz  - Number of grid points in the x, y, and z directions
+    !>   dx, dy, dz  - Mesh size steps in the x, y, and z directions
+    !>   dt          - Time step
+    !>   re          - Reynolds number
+    !>   t           - time 
+    !>
+    !> OUTPUT:
+    !>   e_k         - Kinetic energy
+
+    implicit none
+
+    integer, intent(in) :: nx, ny, nz
+    real(kind=8), intent(in) :: ux(nx,ny,nz), uy(nx,ny,nz), uz(nx,ny,nz)
+    real(kind=8), intent(in) :: dx, dy, dz, dt, re, t
+    real(kind=8), intent(out) :: e_k
+
+    real(kind=8) :: ux_mean, uy_mean, uz_mean
+    real(kind=8) :: duxdx_mean, duxdy_mean, duxdz_mean
+    real(kind=8) :: duydx_mean, duydy_mean, duydz_mean
+    real(kind=8) :: duzdx_mean, duzdy_mean, duzdz_mean
+    real(kind=8) :: e_k_m1, eps_t, eps, dzeta, xnu
+    real(kind=8), allocatable :: duxdx(:,:,:), duxdy(:,:,:), duxdz(:,:,:)
+    real(kind=8), allocatable :: duydx(:,:,:), duydy(:,:,:), duydz(:,:,:)
+    real(kind=8), allocatable :: duzdx(:,:,:), duzdy(:,:,:), duzdz(:,:,:)
+
+    ! Allocate intermediate arrays
+    allocate(duxdx(nx,ny,nz), duxdy(nx,ny,nz), duxdz(nx,ny,nz))
+    allocate(duydx(nx,ny,nz), duydy(nx,ny,nz), duydz(nx,ny,nz))
+    allocate(duzdx(nx,ny,nz), duzdy(nx,ny,nz), duzdz(nx,ny,nz))
+
+    ! Calculate mean velocity components
+    ux_mean = average_3d_array(ux**2)
+    uy_mean = average_3d_array(uy**2)
+    uz_mean = average_3d_array(uz**2)
+
+    ! Calculate derivatives of velocity components
+    call derxi(duxdx, ux, dx)
+    call deryp(duxdy, ux, dy)
+    call derzp(duxdz, ux, dz)
+    call derxp(duydx, uy, dx)
+    call deryi(duydy, uy, dy)
+    call derzp(duydz, uy, dz)
+    call derxp(duzdx, uz, dx)
+    call deryp(duzdy, uz, dy)
+    call derzi(duzdz, uz, dz)
+
+    ! Calculate mean values of the derivatives
+    duxdx_mean = average_3d_array(duxdx**2)
+    duxdy_mean = average_3d_array(duxdy**2)
+    duxdz_mean = average_3d_array(duxdz**2)
+    duydx_mean = average_3d_array(duydx**2)
+    duydy_mean = average_3d_array(duydy**2)
+    duydz_mean = average_3d_array(duydz**2)
+    duzdx_mean = average_3d_array(duzdx**2)
+    duzdy_mean = average_3d_array(duzdy**2)
+    duzdz_mean = average_3d_array(duzdz**2)
+
+    ! Calculate kinetic energy
+    e_k_m1 = e_k
+    e_k = 0.5d0 * (ux_mean + uy_mean + uz_mean)
+
+    ! Calculate turbulent dissipation rate
+    eps_t = -(e_k - e_k_m1) / dt
+
+    ! Calculate kinematic viscosity
+    xnu = 1.0d0 / re
+
+    ! Calculate dissipation rate
+    eps = xnu * ( &
+         duxdx_mean + duxdy_mean + duxdz_mean + &
+         duydx_mean + duydy_mean + duydz_mean + &
+         duzdx_mean + duzdy_mean + duzdz_mean)
+
+    ! Calculate enstrophy (related to dissipation)
+    dzeta = 2.d0 * xnu * eps
+
+    call write_statistics(t, e_k, eps_t, eps, dzeta, &
+         ux_mean, uy_mean, uz_mean, &
+         duxdx_mean, duxdy_mean, duxdz_mean, &
+         duydx_mean, duydy_mean, duydz_mean, &
+         duzdx_mean, duzdy_mean, duzdz_mean)
+
+    ! Deallocate intermediate arrays
+    deallocate(duxdx, duxdy, duxdz)
+    deallocate(duydx, duydy, duydz)
+    deallocate(duzdx, duzdy, duzdz)
+
+    return
+  end subroutine statistics_calc
+
 end module utils
 

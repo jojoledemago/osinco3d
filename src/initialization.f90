@@ -29,7 +29,7 @@ module initialization
   integer :: kmax        !> Maximum iterations
 
   ! Flow parameters
-  real(kind=8) :: re, sc, u0, l0, u_ref, t_ref, e_k
+  real(kind=8) :: re, sc, u0, l0, u_ref, t_ref
   integer :: typesim ! 0=Read fields.bin file, 1=Convected vorte
   real(kind=8) :: ratio !> ratio bteween u1 and u2 for the planar jet simulation
   ! Boundary conditions for x and y directions

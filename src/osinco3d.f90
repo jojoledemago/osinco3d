@@ -62,6 +62,8 @@ program osinco3d
        uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
   call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
        uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
+  call statistics_calc(ux, uy, uz, nx, ny, nz, &
+    dx, dy, dz, re, 0.d0)
   print *, ""
   print *, "Do you want to start the loop? (yes/no)"
   read(*, '(A3)') response
@@ -141,8 +143,8 @@ program osinco3d
              uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
         call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
              uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
-        call statistics_calc(e_k, ux, uy, uz, nx, ny, nz, &
-             dx, dy, dz, dt, re, time)
+        call statistics_calc(ux, uy, uz, nx, ny, nz, &
+             dx, dy, dz, re, time)
      end if
      if (itime == nsve) then
         call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)

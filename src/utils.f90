@@ -291,8 +291,8 @@ contains
 
   end subroutine calcul_cpu_time
 
-  subroutine statistics_calc(e_k, ux, uy, uz, nx, ny, nz, &
-       dx, dy, dz, dt, re, t)
+  subroutine statistics_calc(ux, uy, uz, nx, ny, nz, &
+       dx, dy, dz, re, t)
     !> Calculate various statistical quantities of the flow field, including kinetic energy,
     !> dissipation rate, and enstrophy.
     !>
@@ -303,22 +303,19 @@ contains
     !>   dt          - Time step
     !>   re          - Reynolds number
     !>   t           - time 
-    !>
-    !> OUTPUT:
-    !>   e_k         - Kinetic energy
 
     implicit none
 
     integer, intent(in) :: nx, ny, nz
     real(kind=8), intent(in) :: ux(nx,ny,nz), uy(nx,ny,nz), uz(nx,ny,nz)
-    real(kind=8), intent(in) :: dx, dy, dz, dt, re, t
-    real(kind=8), intent(out) :: e_k
+    real(kind=8), intent(in) :: dx, dy, dz, re, t
 
+    integer :: i, j, k
     real(kind=8) :: ux_mean, uy_mean, uz_mean
     real(kind=8) :: duxdx_mean, duxdy_mean, duxdz_mean
     real(kind=8) :: duydx_mean, duydy_mean, duydz_mean
     real(kind=8) :: duzdx_mean, duzdy_mean, duzdz_mean
-    real(kind=8) :: e_k_m1, eps_t, eps, dzeta, xnu
+    real(kind=8) :: e_k, eps, eps2, dzeta, xnu, t1
     real(kind=8), allocatable :: duxdx(:,:,:), duxdy(:,:,:), duxdz(:,:,:)
     real(kind=8), allocatable :: duydx(:,:,:), duydy(:,:,:), duydz(:,:,:)
     real(kind=8), allocatable :: duzdx(:,:,:), duzdy(:,:,:), duzdz(:,:,:)
@@ -355,26 +352,66 @@ contains
     duzdy_mean = average_3d_array(duzdy**2)
     duzdz_mean = average_3d_array(duzdz**2)
 
-    ! Calculate kinetic energy
-    e_k_m1 = e_k
-    e_k = 0.5d0 * (ux_mean + uy_mean + uz_mean)
-
-    ! Calculate turbulent dissipation rate
-    eps_t = -(e_k - e_k_m1) / dt
-
     ! Calculate kinematic viscosity
     xnu = 1.0d0 / re
 
+    dzeta = 0.d0
+    eps = 0.d0
+    e_k = 0.d0
+    do k = 1, nz
+    do j = 1, ny
+    do i = 1, nx
+    ! Calculate kinetic energy
+       e_k = e_k + 0.5d0 * ( &
+           ux(i,j,k)**2 + uy(i,j,k)**2 + uz(i,j,k)**2)
     ! Calculate dissipation rate
-    eps = xnu * ( &
-         duxdx_mean + duxdy_mean + duxdz_mean + &
-         duydx_mean + duydy_mean + duydz_mean + &
-         duzdx_mean + duzdy_mean + duzdz_mean)
+       eps = eps + 0.5d0 * xnu * ( &
+           (2.d0 * duxdx(i,j,k))**2 + &
+           (2.d0 * duydy(i,j,k))**2 + &
+           (2.d0 * duzdz(i,j,k))**2 + &
+           2.d0 * (duxdy(i,j,k) + duydx(i,j,k))**2 + &
+           2.d0 * (duxdz(i,j,k) + duzdx(i,j,k))**2 + &
+           2.d0 * (duydz(i,j,k) + duzdy(i,j,k))**2)
 
     ! Calculate enstrophy (related to dissipation)
-    dzeta = 2.d0 * xnu * eps
+       dzeta = dzeta + 0.5d0 * ( &
+           (duzdy(i,j,k) - duydz(i,j,k))**2 + &
+           (duxdz(i,j,k) - duzdx(i,j,k))**2 + &
+           (duydx(i,j,k) - duxdy(i,j,k))**2)
 
-    call write_statistics(t, e_k, eps_t, eps, dzeta, &
+    end do
+    end do
+    end do
+    e_k = e_k / real(nx*ny*nz, kind=8)
+    eps = eps / real(nx*ny*nz, kind=8)
+    dzeta = dzeta / real(nx*ny*nz, kind=8)
+    
+    ! Calculate 2nd derivatives of velocity components
+    call derxxi(duxdx, ux, dx)
+    call deryyp(duxdy, ux, dy)
+    call derzzp(duxdz, ux, dz)
+    call derxxp(duydx, uy, dx)
+    call deryyi(duydy, uy, dy)
+    call derzzp(duydz, uy, dz)
+    call derxxp(duzdx, uz, dx)
+    call deryyp(duzdy, uz, dy)
+    call derzzi(duzdz, uz, dz)
+    eps2 = 0.d0
+    do k = 1, nz
+    do j = 1, ny
+    do i = 1, nx
+        ! Calculate turbulent dissipation rate
+        t1 = (-xnu) * ( & 
+             ux(i,j,k) * (duxdx(i,j,k)+duxdy(i,j,k)+duxdz(i,j,k)) + &
+             uy(i,j,k) * (duydx(i,j,k)+duydy(i,j,k)+duydz(i,j,k)) + &
+             uz(i,j,k) * (duzdx(i,j,k)+duzdy(i,j,k)+duzdz(i,j,k)))
+        eps2 = eps2 + t1
+    end do
+    end do
+    end do
+    eps2 = eps2 / real(nx*ny*nz, kind=8)
+
+    call write_statistics(t, e_k, eps, eps2, dzeta, &
          ux_mean, uy_mean, uz_mean, &
          duxdx_mean, duxdy_mean, duxdz_mean, &
          duydx_mean, duydy_mean, duydz_mean, &

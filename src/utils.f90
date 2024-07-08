@@ -359,33 +359,33 @@ contains
     eps = 0.d0
     e_k = 0.d0
     do k = 1, nz
-    do j = 1, ny
-    do i = 1, nx
-    ! Calculate kinetic energy
-       e_k = e_k + 0.5d0 * ( &
-           ux(i,j,k)**2 + uy(i,j,k)**2 + uz(i,j,k)**2)
-    ! Calculate dissipation rate
-       eps = eps + 0.5d0 * xnu * ( &
-           (2.d0 * duxdx(i,j,k))**2 + &
-           (2.d0 * duydy(i,j,k))**2 + &
-           (2.d0 * duzdz(i,j,k))**2 + &
-           2.d0 * (duxdy(i,j,k) + duydx(i,j,k))**2 + &
-           2.d0 * (duxdz(i,j,k) + duzdx(i,j,k))**2 + &
-           2.d0 * (duydz(i,j,k) + duzdy(i,j,k))**2)
+       do j = 1, ny
+          do i = 1, nx
+             ! Calculate kinetic energy
+             e_k = e_k + 0.5d0 * ( &
+                  ux(i,j,k)**2 + uy(i,j,k)**2 + uz(i,j,k)**2)
+             ! Calculate dissipation rate
+             eps = eps + 0.5d0 * xnu * ( &
+                  (2.d0 * duxdx(i,j,k))**2 + &
+                  (2.d0 * duydy(i,j,k))**2 + &
+                  (2.d0 * duzdz(i,j,k))**2 + &
+                  2.d0 * (duxdy(i,j,k) + duydx(i,j,k))**2 + &
+                  2.d0 * (duxdz(i,j,k) + duzdx(i,j,k))**2 + &
+                  2.d0 * (duydz(i,j,k) + duzdy(i,j,k))**2)
 
-    ! Calculate enstrophy (related to dissipation)
-       dzeta = dzeta + 0.5d0 * ( &
-           (duzdy(i,j,k) - duydz(i,j,k))**2 + &
-           (duxdz(i,j,k) - duzdx(i,j,k))**2 + &
-           (duydx(i,j,k) - duxdy(i,j,k))**2)
+             ! Calculate enstrophy (related to dissipation)
+             dzeta = dzeta + 0.5d0 * ( &
+                  (duzdy(i,j,k) - duydz(i,j,k))**2 + &
+                  (duxdz(i,j,k) - duzdx(i,j,k))**2 + &
+                  (duydx(i,j,k) - duxdy(i,j,k))**2)
 
-    end do
-    end do
+          end do
+       end do
     end do
     e_k = e_k / real(nx*ny*nz, kind=8)
     eps = eps / real(nx*ny*nz, kind=8)
     dzeta = dzeta / real(nx*ny*nz, kind=8)
-    
+
     ! Calculate 2nd derivatives of velocity components
     call derxxi(duxdx, ux, dx)
     call deryyp(duxdy, ux, dy)
@@ -398,16 +398,16 @@ contains
     call derzzi(duzdz, uz, dz)
     eps2 = 0.d0
     do k = 1, nz
-    do j = 1, ny
-    do i = 1, nx
-        ! Calculate turbulent dissipation rate
-        t1 = (-xnu) * ( & 
-             ux(i,j,k) * (duxdx(i,j,k)+duxdy(i,j,k)+duxdz(i,j,k)) + &
-             uy(i,j,k) * (duydx(i,j,k)+duydy(i,j,k)+duydz(i,j,k)) + &
-             uz(i,j,k) * (duzdx(i,j,k)+duzdy(i,j,k)+duzdz(i,j,k)))
-        eps2 = eps2 + t1
-    end do
-    end do
+       do j = 1, ny
+          do i = 1, nx
+             ! Calculate turbulent dissipation rate
+             t1 = (-xnu) * ( & 
+                  ux(i,j,k) * (duxdx(i,j,k)+duxdy(i,j,k)+duxdz(i,j,k)) + &
+                  uy(i,j,k) * (duydx(i,j,k)+duydy(i,j,k)+duydz(i,j,k)) + &
+                  uz(i,j,k) * (duzdx(i,j,k)+duzdy(i,j,k)+duzdz(i,j,k)))
+             eps2 = eps2 + t1
+          end do
+       end do
     end do
     eps2 = eps2 / real(nx*ny*nz, kind=8)
 

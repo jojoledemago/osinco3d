@@ -63,7 +63,7 @@ program osinco3d
   call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
        uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
   call statistics_calc(ux, uy, uz, nx, ny, nz, &
-    dx, dy, dz, re, 0.d0)
+       dx, dy, dz, re, 0.d0)
   print *, ""
   print *, "Do you want to start the loop? (yes/no)"
   read(*, '(A3)') response

@@ -13,9 +13,9 @@ ratio = 1.00
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 129
-ny = 129
-nz = 129
+nx = 165
+ny = 165
+nz = 165
 
 xlx = 3.141592653589793
 yly = 3.141592653589793
@@ -45,14 +45,14 @@ itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 cfl = 0.05
 irestart = 1
 itstart = 1
-itstop = 40000
+itstop = 27000
 /End
 
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.859  !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
-eps = 1.e-6
+omega = 1.887  !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+eps = 1.e-5
 kmax = 10000
 /End
 
@@ -66,11 +66,11 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 200
+nfre = 100
 nsve = 2000
-xpro = 1. !1.5707963267948966
-ypro = 1. !1.5707963267948966
-zpro = 1. !1.5707963267948966
+xpro = 1.5707963267948966
+ypro = 1.5707963267948966
+zpro = 1.5707963267948966
 /End
 
 !<--------------->!

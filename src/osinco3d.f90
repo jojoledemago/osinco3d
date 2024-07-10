@@ -15,6 +15,10 @@ program osinco3d
   call variables()
   call print_variables()
   call schemes()
+  ! Calculation visu module size
+  call calc_visu_data_size(datasize, nx, ny, nz, itstop, &
+       itstart, nfre, 7)
+  call write_visu_data_size(datasize)
   ! Check out dir existences
   ! Set the simulation type
   if (typesim > 0) then

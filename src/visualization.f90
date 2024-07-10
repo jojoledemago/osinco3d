@@ -256,12 +256,6 @@ contains
     call write_binary(binaryname, uz)
     write(binaryname, '(A,I0,A)') 'outputs/pp_', num, '.bin'
     call write_binary(binaryname, pp)
-    write(binaryname, '(A,I0,A)') 'outputs/rotx_', num, '.bin'
-    call write_binary(binaryname, rotx)
-    write(binaryname, '(A,I0,A)') 'outputs/roty_', num, '.bin'
-    call write_binary(binaryname, roty)
-    write(binaryname, '(A,I0,A)') 'outputs/rotz_', num, '.bin'
-    call write_binary(binaryname, rotz)
     write(binaryname, '(A,I0,A)') 'outputs/vort_', num, '.bin'
     call write_binary(binaryname, sqrt(rotx**2 + roty**2 + rotz**2))
     write(binaryname, '(A,I0,A)') 'outputs/qcrit_', num, '.bin'
@@ -316,12 +310,6 @@ contains
     call write_data_item(iunit, binaryname, 'uz', nx, ny, nz)
     write(binaryname, '(A,I0,A)') 'pp_', num, '.bin'
     call write_data_item(iunit, binaryname, 'pp', nx, ny, nz)
-    write(binaryname, '(A,I0,A)') 'rotx_', num, '.bin'
-    call write_data_item(iunit, binaryname, 'rotx', nx, ny, nz)
-    write(binaryname, '(A,I0,A)') 'roty_', num, '.bin'
-    call write_data_item(iunit, binaryname, 'roty', nx, ny, nz)
-    write(binaryname, '(A,I0,A)') 'rotz_', num, '.bin'
-    call write_data_item(iunit, binaryname, 'rotz', nx, ny, nz)
     write(binaryname, '(A,I0,A)') 'vort_', num, '.bin'
     call write_data_item(iunit, binaryname, 'vort', nx, ny, nz)
     write(binaryname, '(A,I0,A)') 'qcrit_', num, '.bin'

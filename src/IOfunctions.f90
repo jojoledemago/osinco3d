@@ -568,6 +568,14 @@ contains
 
   end subroutine header_stats
 
+  subroutine write_visu_data_size(datasize)
 
+    real(kind=8), intent(in) :: datasize
+
+    write(*,*) "  Visu data size:"
+    write(*,'(F7.3, 2A)') datasize, ' GB'
+    print*, ""
+
+  end subroutine write_visu_data_size
 end module IOfunctions
 

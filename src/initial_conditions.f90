@@ -201,9 +201,9 @@ contains
     end do
     if (ici == 1 .or. ici == 3) then
        A = 0.01 * u0
-       kx = 4
-       ky = 2
-       kz = 1
+       kx = 8
+       ky = 4
+       kz = 2
        nharmonics = 8
        dy = y(2) - y(1)
        ! Calcul du facteur de normalisation pour garantir que la somme des harmoniques est entre -1 et 1
@@ -222,9 +222,9 @@ contains
                    x_disturb = x_disturb + &
                         sin(2.0 * pi * kx * h * x(i) / xlx) * u_base(j)
                    y_disturb = y_disturb + &
-                        cos(2.0 * pi * ky * h * x(i) / xlx) * u_base(j)
+                        cos(2.0 * pi * ky * h * y(i) / yly) * u_base(j)
                    z_disturb = z_disturb + &
-                        sin(2.0 * pi * kz * h * x(i) / xlx) * u_base(j)
+                        sin(2.0 * pi * kz * h * z(i) / zlz) * u_base(j)
                 end do
                 ux(i,j,k) = ux(i,j,k) + A * x_disturb / scale_factor
                 uy(i,j,k) = uy(i,j,k) + A * y_disturb / scale_factor

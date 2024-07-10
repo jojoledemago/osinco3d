@@ -425,5 +425,22 @@ contains
     return
   end subroutine statistics_calc
 
+  subroutine calc_visu_data_size(datasize, n1, n2, n3, itstop, itstart, nfre, num_var)
+    real(kind=8), intent(out) :: datasize
+    integer, intent(in) :: itstop, itstart, nfre, num_var, n1, n2, n3
+
+    integer :: num_elements, element_size
+    integer :: num_enr
+
+    num_elements = n1 * n2 * n3
+    element_size = 8
+    num_enr = modulo(itstop - itstart, nfre)
+    datasize = real(num_elements * element_size * num_var * num_enr, kind=8)
+    ! IN GB
+    datasize = real(datasize/(1024*1024), kind=8)
+
+    return
+  end subroutine calc_visu_data_size
+
 end module utils
 

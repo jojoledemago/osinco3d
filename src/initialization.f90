@@ -6,7 +6,7 @@ module initialization
   !> This module initializes and configures the simulation parameters, variables, and methods.
   !> It sets up the grid, time stepping, and derivative calculation methods based on boundary conditions and simulation type.
 
-  real(kind=8) :: divu_stats(6)
+  real(kind=8) :: divu_stats(6), datasize
   character(len=10) :: response
   ! Domain definition variables
   integer :: nx, ny, nz           !> Grid points in the x, y, and z directions

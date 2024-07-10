@@ -429,15 +429,13 @@ contains
     real(kind=8), intent(out) :: datasize
     integer, intent(in) :: itstop, itstart, nfre, num_var, n1, n2, n3
 
-    integer :: num_elements, element_size
-    integer :: num_enr
+    integer :: num_enr, num_elements
+    real(kind=8) :: element_size
 
     num_elements = n1 * n2 * n3
-    element_size = 8
-    num_enr = modulo(itstop - itstart, nfre)
-    datasize = real(num_elements * element_size * num_var * num_enr, kind=8)
-    ! IN GB
-    datasize = real(datasize/(1024*1024), kind=8)
+    element_size = 7.45d-9
+    num_enr = (itstop - itstart + 1) /  nfre
+    datasize = real(num_elements, kind=8) * element_size * real(num_var, kind=8) * real(num_enr, kind=8)
 
     return
   end subroutine calc_visu_data_size

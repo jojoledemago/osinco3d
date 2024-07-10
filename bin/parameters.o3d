@@ -3,38 +3,38 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 2  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 3  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
 re = 1600.
-ratio = 1.00
+ratio = -1.00
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 185
-ny = 185
-nz = 185
+nx = 201
+ny = 401
+nz = 101
 
-xlx = 3.141592653589793
-yly = 3.141592653589793
-zlz = 3.141592653589793
+xlx =  4.
+yly =  8.
+zlz =  2.
 
-x0 = 0. 
-y0 = 0. 
-z0 = 0. 
+x0 =  0. 
+y0 = -4. 
+z0 = -1. 
 /End
 
 !<--------------->!
 &BoundaryConditions
 !<--------------->!
-nbcx1 = 1
-nbcxn = 1
+nbcx1 = 0
+nbcxn = 0
 nbcy1 = 1
 nbcyn = 1
-nbcz1 = 1
-nbczn = 1
+nbcz1 = 0
+nbczn = 0
 sim2d = 0
 /End
 
@@ -66,11 +66,11 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 100
+nfre = 400
 nsve = 2000
-xpro = 1.5707963267948966
-ypro = 1.5707963267948966
-zpro = 1.5707963267948966
+xpro = 2.
+ypro = 0.
+zpro = 0.
 /End
 
 !<--------------->!
@@ -78,6 +78,6 @@ zpro = 1.5707963267948966
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 1.0 !> Turbulence intensity !! Inflow condition
-ici = 0  !> Initial conditions (0: classic, 1: turbulent)
-init_noise = 0.01 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 3  !> Initial conditions (0: classic, 1: noise, 2: oscillations, 3: both)
+init_noise = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
 /End

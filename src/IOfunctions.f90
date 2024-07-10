@@ -572,8 +572,8 @@ contains
 
     real(kind=8), intent(in) :: datasize
 
-    write(*,*) "  Visu data size:"
-    write(*,'(F7.3, 2A)') datasize, ' GB'
+    print *,"Visu data size:"
+    write(*,'(F8.3, 2A)') datasize, ' Go'
     print*, ""
 
   end subroutine write_visu_data_size

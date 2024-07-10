@@ -170,9 +170,9 @@ contains
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
     real(kind=8) :: phi1, phi2
     real(kind=8), dimension(nx,ny,nz) :: magnitude
-    real(kind=8) :: A, x_disturb, y_disturb, z_disturb
-    real(kind=8) :: pi, scale_factor
-    integer :: i, j, k, h, kx, ky, kz, nharmonics
+    real(kind=8) :: A, x_disturb
+    real(kind=8) :: pi
+    integer :: i, j, k, kx
 
     print *, "* Condition Initiale for a Planar Jet simulation"
 
@@ -201,34 +201,14 @@ contains
     end do
     if (ici == 1 .or. ici == 3) then
        A = 0.01 * u0
-       kx = 8
-       ky = 4
-       kz = 2
-       nharmonics = 8
+       kx = 1
        dy = y(2) - y(1)
-       ! Calcul du facteur de normalisation pour garantir que la somme des harmoniques est entre -1 et 1
-       scale_factor = 0.d0
-       do h = 1, nharmonics
-          scale_factor = scale_factor + 1.d0 / h
-       end do
        call calcul_u_base(u_base, ux(1,:,1), dy)
        do k = 1, nz
           do j = 1, ny
              do i = 1, nx
-                x_disturb = 0.d0
-                y_disturb = 0.d0
-                z_disturb = 0.d0
-                do h = 1, nharmonics
-                   x_disturb = x_disturb + &
-                        sin(2.0 * pi * kx * h * x(i) / xlx) * u_base(j)
-                   y_disturb = y_disturb + &
-                        cos(2.0 * pi * ky * h * y(i) / yly) * u_base(j)
-                   z_disturb = z_disturb + &
-                        sin(2.0 * pi * kz * h * z(i) / zlz) * u_base(j)
-                end do
-                ux(i,j,k) = ux(i,j,k) + A * x_disturb / scale_factor
-                uy(i,j,k) = uy(i,j,k) + A * y_disturb / scale_factor
-                uz(i,j,k) = uz(i,j,k) + A * z_disturb / scale_factor
+                x_disturb = u_base(j) * cos(2.d0 * pi * kx * x(i) / xlx)
+                uy(i,j,k) = uy(i,j,k) + A * x_disturb 
              end do
           end do
        end do

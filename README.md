@@ -110,5 +110,5 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 ### InitInflow
 - `iin`: inlet boundary condition type (0: classical, 1: turbulent)
 - `inflow_noise`: turbulence intensity at the inlet boundary (0 to 1), representing a fraction of the characteristic velocity `u0`
-- `ici`: initial condition type (0: classical, 1: turbulent)
+- `ici`: initial condition type (0: classical, 1: oscillation, 2: noise, 3: both)
 - `init_noise`: turbulence intensity for the initial condition (0 to 1), representing a fraction of the characteristic velocity `u0`

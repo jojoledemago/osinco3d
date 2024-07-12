@@ -396,7 +396,7 @@ contains
        do k = 1, nz
           do j = 1, ny
              do i = 1, nx
-                x_disturb = u_base(j) * cos(2.d0 * pi * kx * x(i) / xlx)
+                x_disturb = - u_base(j) * cos(2.d0 * pi * kx * x(i) / xlx)
                 uy(i,j,k) = uy(i,j,k) + A * x_disturb 
              end do
           end do

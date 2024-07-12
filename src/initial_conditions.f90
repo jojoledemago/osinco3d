@@ -383,7 +383,7 @@ contains
              uy(i,j,k) = y(j) * 0.d0
              uz(i,j,k) = z(k) * 0.d0
              if (nscr == 1) then
-                phi(i,j,k) = 1.d0 - exp(-2.d0 * sigma * ((y(j) / theta_o)**2)) ! 0.5d0 - 0.5d0 * tanh(t3)
+                phi(i,j,k) = 0.5d0 - 0.5d0 * tanh(t3)
              end if
           end do
        end do

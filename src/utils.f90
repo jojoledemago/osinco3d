@@ -18,49 +18,6 @@ contains
     return
   end subroutine calcul_u_base
 
-  subroutine gene_pink_noise(pink_noise, n)
-
-    integer, intent(in) :: n
-    real(kind=8), dimension(n), intent(out) :: pink_noise
-
-    integer, parameter :: m = 100
-
-    real(kind=8), parameter :: pi = acos(-1.d0)
-    real(kind=8) :: a, b, sum
-
-    integer :: i, k
-    real(kind=8) :: theta
-    real(kind=8), dimension(m) :: phase
-
-    ! Parameters of the Weierstrass fractal
-    a = 0.5
-    b = 2.0
-
-    ! Generate random phases
-    call random_seed()
-    call random_number(phase)
-    phase = 2.0 * pi * phase  ! Random phases between 0 and 2pi
-
-    ! Initialize the pink noise array
-    pink_noise = 0.0
-
-    ! Generate pink noise using the Weierstrass series
-    do i = 1, n
-       sum = 0.0
-       do k = 1, m
-          theta = b**k * real(i) / real(n)
-          sum = sum + a**k * cos(theta + phase(k))
-       end do
-       pink_noise(i) = sum
-    end do
-
-    ! Normalize the pink noise to be between -1 and 1
-    pink_noise = 2.0 * (pink_noise - minval(pink_noise)) / &
-         (maxval(pink_noise) - minval(pink_noise)) - 1.0
-
-    return
-  end subroutine gene_pink_noise
-
   subroutine normalize1D(f, n1)
     !> Normalize the values of a given array to the range [0, 1] based on the 
     !> absolute values.
@@ -435,7 +392,8 @@ contains
     num_elements = n1 * n2 * n3
     element_size = 7.45d-9
     num_enr = (itstop - itstart + 1) /  nfre
-    datasize = real(num_elements, kind=8) * element_size * real(num_var, kind=8) * real(num_enr, kind=8)
+    datasize = real(num_elements, kind=8) * &
+        element_size * real(num_var, kind=8) * real(num_enr, kind=8)
 
     return
   end subroutine calc_visu_data_size

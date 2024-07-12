@@ -1,5 +1,5 @@
 # osinco3d
-
+![TGV Re = 1600](examples/tgv_re1600/tgv_qcrit_vort_re1600.png)
 This project is a Fortran90 Computational Fluid Dynamics (CFD) code designed to solve the 3D Navier-Stokes equations for incompressible flow using a high-order finite difference method.
 
 ## Table of Contents 

@@ -1,10 +1,11 @@
 module integration
+  use functions
   use poisson
   use derivation
   use initialization, only: inflow
   use diffoper
   use boundary_conditions
-  use IOfunctions, only: print_in_outflow_rate
+  use IOfunctions, only: print_in_outflow_rate, write_velocity_diverged 
   implicit none
 
 contains
@@ -269,6 +270,7 @@ contains
     integer, intent(in) :: nx, ny, nz
 
     real(kind=8), dimension(nx, ny, nz) :: dpdx, dpdy, dpdz
+    logical :: has_nan
 
     print *, "* Correct velocity"
     ! Calculate the pressure gradients
@@ -281,6 +283,20 @@ contains
     ux = ux_pred - dt * dpdx
     uy = uy_pred - dt * dpdy
     uz = uz_pred - dt * dpdz
+
+    has_nan = contains_nan(ux)
+    if (has_nan) then
+       call  write_velocity_diverged()
+    end if
+    has_nan = contains_nan(uy)
+    if (has_nan) then
+       call  write_velocity_diverged()
+    end if
+    has_nan = contains_nan(uz)
+    if (has_nan) then
+       call  write_velocity_diverged()
+    end if
+
     print*, ""
 
     return

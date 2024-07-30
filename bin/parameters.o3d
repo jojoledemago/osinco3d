@@ -6,24 +6,24 @@
 typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 800.
+re = 2500.
 ratio = -1.00
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 129
-ny = 257
-nz =  65
+nx = 211
+ny = 369
+nz =  93
 
-xlx =  9.42477796076938
-yly = 18.84955592153876
-zlz =  4.71238898038469
+xlx =  6.30
+yly = 11.04
+zlz =  2.76
 
 x0 =  0. 
-y0 = -9.42477796076938
-z0 = -2.356194490192345
+y0 = -5.52
+z0 = -1.38
 /End
 
 !<--------------->!
@@ -43,15 +43,15 @@ sim2d = 0
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 cfl = 0.05
-irestart = 1
+irestart = 0
 itstart = 1
-itstop = 18000
+itstop = 32000
 /End
 
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.676 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+omega = 1.829 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
 eps = 1.e-4
 kmax = 10000
 /End
@@ -66,9 +66,9 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 200
-nsve = 2000
-xpro = 4.
+nfre = 1000
+nsve = 4000
+xpro = 3.15
 ypro = 0.
 zpro = 0.
 /End

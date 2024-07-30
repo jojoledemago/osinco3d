@@ -577,5 +577,11 @@ contains
     print*, ""
 
   end subroutine write_visu_data_size
+
+  subroutine write_velocity_diverged()
+
+    print *, "Velocity has diverged"
+    return
+  end subroutine write_velocity_diverged
 end module IOfunctions
 

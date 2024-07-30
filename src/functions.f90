@@ -1,6 +1,7 @@
 module functions
   implicit none
 contains
+
   function seconds_to_hm(seconds) result(hm)
     implicit none
     integer, intent(in) :: seconds
@@ -144,5 +145,42 @@ contains
     avg = sum / (nx * ny * nz)
 
   end function average_3d_array
+
+  function contains_nan(tab) result(has_nan)
+    !> Check if the 3D array contains any NaN values
+    !>
+    !> INPUT:
+    !> tab(n1, n2, n3) : 3D array of real numbers
+    !>
+    !> OUTPUT:
+    !> has_nan        : Logical value indicating presence of NaN
+    !
+    implicit none
+    real(kind=8), dimension(:,:,:), intent(in) :: tab
+    logical :: has_nan
+    integer :: i, j, k
+    integer :: n1, n2, n3
+
+    ! Initialize result to false
+    has_nan = .false.
+
+    ! Get the dimensions of the array
+    n1 = size(tab, 1)
+    n2 = size(tab, 2)
+    n3 = size(tab, 3)
+
+    ! Loop through each element to check for NaN
+    do i = 1, n1
+       do j = 1, n2
+          do k = 1, n3
+             if (isnan(tab(i, j, k))) then
+                has_nan = .true.
+                return
+             end if
+          end do
+       end do
+    end do
+
+  end function contains_nan
 
 end module functions

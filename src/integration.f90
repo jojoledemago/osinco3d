@@ -294,19 +294,19 @@ contains
 
     ! Stability check: Verify no NaN values in the velocity fields
     has_nan = contains_nan(ux)
-    if (has_nan) then
+    if (has_nan .or. maxval(ux) > 1000.) then
        call write_velocity_diverged()
        stop
     end if
 
     has_nan = contains_nan(uy)
-    if (has_nan) then
+    if (has_nan .or. maxval(uy) > 1000.) then
        call write_velocity_diverged()
        stop
     end if
 
     has_nan = contains_nan(uz)
-    if (has_nan) then
+    if (has_nan .or. maxval(uz) > 1000.) then
        call write_velocity_diverged()
        stop
     end if

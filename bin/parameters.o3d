@@ -6,16 +6,16 @@
 typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 2200.
+re = 1100.
 ratio = -1.00
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 211
-ny = 369
-nz =  93
+nx = 106
+ny = 185
+nz =  47
 
 xlx =  6.30
 yly = 11.04
@@ -51,9 +51,9 @@ itstop = 32000
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.829 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+omega = 1.687 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
 eps = 1.e-4
-kmax = 10000
+kmax = 1000
 /End
 
 !<--------------->!
@@ -66,8 +66,8 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 1000
-nsve = 4000
+nfre = 0500
+nsve = 2000
 xpro = 3.15
 ypro = 0.
 zpro = 0.

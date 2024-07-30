@@ -287,14 +287,17 @@ contains
     has_nan = contains_nan(ux)
     if (has_nan) then
        call  write_velocity_diverged()
+       stop
     end if
     has_nan = contains_nan(uy)
     if (has_nan) then
        call  write_velocity_diverged()
+       stop
     end if
     has_nan = contains_nan(uz)
     if (has_nan) then
        call  write_velocity_diverged()
+       stop
     end if
 
     print*, ""

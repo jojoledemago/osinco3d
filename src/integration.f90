@@ -244,15 +244,17 @@ contains
   subroutine correct_velocity(ux, uy, uz, ux_pred, uy_pred, uz_pred, &
        pp, dt, dx, dy, dz, nx, ny, nz)
     !> Correct the velocity components based on the pressure gradient.
-    !> This step is part of the fractionnal step method to resolve
+    !> This step is part of the fractional step method to solve
     !> incompressible Navier-Stokes equations.
-    !> Periodic boundary conditions are applied in the x-direction 
-    !> to handle boundary cells
+    !> Periodic boundary conditions are applied in the x-direction
+    !> to handle boundary cells.
+    !> The function also includes a stability check to ensure that
+    !> the corrected velocity components do not contain NaN values.
     !
     !> INPUT:
-    !> ux_pred(nx, ny, nz): Predict x-component of velocity
-    !> uy_pred(nx, ny, nz): Predict y-component of velocity
-    !> uz_pred(nx, ny, nz): Predict z-component of velocity
+    !> ux_pred(nx, ny, nz): Predicted x-component of velocity
+    !> uy_pred(nx, ny, nz): Predicted y-component of velocity
+    !> uz_pred(nx, ny, nz): Predicted z-component of velocity
     !> pp(nx, ny, nz)     : Current pressure field
     !> dt                 : Time step size
     !> dx, dy, dz         : Grid spacing in x, y, z directions
@@ -262,6 +264,12 @@ contains
     !> ux(nx, ny, nz)     : Corrected x-component of velocity
     !> uy(nx, ny, nz)     : Corrected y-component of velocity
     !> uz(nx, ny, nz)     : Corrected z-component of velocity
+    !>
+    !> NOTES:
+    !> This subroutine performs a stability check on the corrected
+    !> velocity fields to detect any NaN values. If a NaN is found
+    !> in any component of the velocity field, the simulation is
+    !> halted and an error message is output.
 
     real(kind=8), intent(inout) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(in) :: ux_pred(:,:,:), uy_pred(:,:,:), uz_pred(:,:,:)
@@ -284,19 +292,22 @@ contains
     uy = uy_pred - dt * dpdy
     uz = uz_pred - dt * dpdz
 
+    ! Stability check: Verify no NaN values in the velocity fields
     has_nan = contains_nan(ux)
     if (has_nan) then
-       call  write_velocity_diverged()
+       call write_velocity_diverged()
        stop
     end if
+
     has_nan = contains_nan(uy)
     if (has_nan) then
-       call  write_velocity_diverged()
+       call write_velocity_diverged()
        stop
     end if
+
     has_nan = contains_nan(uz)
     if (has_nan) then
-       call  write_velocity_diverged()
+       call write_velocity_diverged()
        stop
     end if
 

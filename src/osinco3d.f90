@@ -46,8 +46,11 @@ program osinco3d
        dx, dy, dz, nx, ny, nz, 0)
   divu_stats = function_stats(divu, nx, ny, nz)
   call print_divu_statistics(divu_stats, .false.)
-  call visu(phi(:,:,kpro), x, y, nx, ny, num)
-
+  if (nscr > 0) then
+     call visu(phi(:,:,kpro), x, y, nx, ny, num)
+  else 
+     call visu(rotz(:,:,kpro), x, y, nx, ny, num)
+  end if
   call visualize_2d(x, y, nx, ny, &
        ux(:,:,kpro), uy(:,:,kpro), uz(:,:,kpro), pp(:,:,kpro), &
        rotx(:,:,kpro), roty(:,:,kpro), rotz(:,:,kpro), q_criterion(:,:,kpro), &
@@ -135,7 +138,12 @@ program osinco3d
              divu(:,jpro,:), phi(:,jpro,:), time, "outputs/solution_xz.dat")
         call write_all_data(ux, uy, uz, rotx, roty, rotz, q_criterion, pp, phi, numx, nscr)
         call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr)
-        call visu(phi(:,:,kpro), x, y, nx, ny, num)
+
+        if (nscr > 1) then
+           call visu(phi(:,:,kpro), x, y, nx, ny, num)
+        else 
+           call visu(rotz(:,:,kpro), x, y, nx, ny, num)
+        end if
      end if
      if (modulo(itime, 25) == 0) then
         call calculate_residuals(ux, uy, uz, &

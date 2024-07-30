@@ -6,7 +6,7 @@
 typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 2500.
+re = 2200.
 ratio = -1.00
 /End
 

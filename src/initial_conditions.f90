@@ -201,20 +201,20 @@ contains
     end do
     if (ici == 1 .or. ici == 3) then
        A = 0.01 * u0
-       kx = 1
+       kx = 3
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)
        do k = 1, nz
           do j = 1, ny
              do i = 1, nx
-                x_disturb = u_base(j) * cos(2.d0 * pi * kx * x(i) / xlx)
+                x_disturb = u_base(j) * sin(2.d0 * pi * kx * x(i) / xlx)
                 uy(i,j,k) = uy(i,j,k) + A * x_disturb 
              end do
           end do
        end do
     end if
     magnitude = compute_velocity_magnitude(ux, uy, uz, nx, ny, nz) 
-    pp = 1.d0 !+ magnitude * magnitude / 2.d0
+    pp = 0.d0 + magnitude * magnitude / 2.d0
 
     return
 

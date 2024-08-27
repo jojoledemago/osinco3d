@@ -59,6 +59,7 @@ module initialization
   integer :: nscr
   ! Save data parameters
   integer :: nfre, nsve 
+  real(kind=8) :: initstat
   real(kind=8) :: xpro, ypro, zpro !> x, y, z absisses of the profil for visu
   integer :: ipro, jpro, kpro !> indices of the profil for visu
 
@@ -113,7 +114,7 @@ contains
     namelist /FlowParam/ u0, l0, re, typesim, ratio
     namelist /PoissonEq/ omega, eps, kmax
     namelist /Scalar/ nscr, sc
-    namelist /VisuParameters/ nfre, nsve, xpro, ypro, zpro
+    namelist /VisuParameters/ nfre, nsve, initstat, xpro, ypro, zpro
     namelist /InitInflow/ iin, inflow_noise, ici, init_noise
 
     open(unit=10, file='parameters.o3d', status='old', action='read', iostat=io_status)

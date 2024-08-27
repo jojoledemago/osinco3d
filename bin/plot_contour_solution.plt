@@ -6,10 +6,10 @@ unset surface
 set size ratio -1 
 set tics out
 set contour
-set xrange[0:pi]
-set yrange[0:pi]
+#set xrange[0:pi]
+#set yrange[0:pi]
 #set cntrparam levels incremental -10.6, 0.05, -10
-#set cntrparam levels 6
+set cntrparam levels 6
 set isosamples 150
 set key out
 #splot 'solution_xy.dat' u 1:2:3 w l t 'Ux'

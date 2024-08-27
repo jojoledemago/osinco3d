@@ -113,6 +113,7 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 ### VisuParameters
 - `nfre`: frequency of saving data for visualization (XDMF format)
 - `nsve`: frequency of saving data for post-processing
+- `initstat`: time after which statistics are collected
 - `xpro`, `ypro`, `zpro`: coordinates of the cut plane for 2D visualization (Gnuplot format)
 
 ### InitInflow

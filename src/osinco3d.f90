@@ -139,7 +139,7 @@ program osinco3d
         call write_all_data(ux, uy, uz, rotx, roty, rotz, q_criterion, pp, phi, numx, nscr)
         call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr)
 
-        if (nscr > 1) then
+        if (nscr > 0) then
            call visu(phi(:,:,kpro), x, y, nx, ny, num)
         else 
            call visu(rotz(:,:,kpro), x, y, nx, ny, num)
@@ -155,15 +155,17 @@ program osinco3d
              uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
         call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
              uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
-        call statistics_calc(ux, uy, uz, nx, ny, nz, &
-             dx, dy, dz, re, time)
+        if (time > initstat) then
+           call statistics_calc(ux, uy, uz, nx, ny, nz, &
+                dx, dy, dz, re, time)
+        end if
      end if
      if (itime == nsve) then
         call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)
      end if
      call CPU_TIME(end_time)
      call calcul_cpu_time(go_time, start_time, end_time, itime, &
-          (itstop-itstart), sum_elapsed_time)
+          (itstop - itstart), sum_elapsed_time)
   end do
   stop
 end program osinco3d

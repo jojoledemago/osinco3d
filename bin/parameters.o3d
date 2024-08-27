@@ -3,27 +3,27 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 3  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 800.
-ratio = -1.00
+re = 2000.
+ratio = 0.08
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 201
-ny = 369
-nz = 101
+nx = 311
+ny = 301
+nz =  73
 
-xlx =  6.30
-yly = 11.592
-zlz =  3.15
+xlx = 12.4
+yly = 12.0
+zlz =  2.9
 
 x0 =  0. 
-y0 = -5.796
-z0 = -1.575
+y0 = -6.0
+z0 = -1.45
 /End
 
 !<--------------->!
@@ -45,13 +45,13 @@ itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 cfl = 0.05
 irestart = 0
 itstart = 1
-itstop = 16000
+itstop = 40000
 /End
 
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.821 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+omega = 1.778 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
 eps = 1.e-4
 kmax = 1000
 /End
@@ -59,16 +59,17 @@ kmax = 1000
 !<--------------->!
 &Scalar
 !<--------------->!
-nscr = 0 !> 1 for scalar equation resolution 
+nscr = 1 !> 1 for scalar equation resolution 
 sc = 1. !> Schmidt number
 /End
 
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 0500
-nsve = 2000
-xpro = 3.15
+nfre = 1000
+nsve = 4000
+initstat = 12.4 !> Time for beginng statistic save
+xpro = 6.2
 ypro = 0.
 zpro = 0.
 /End
@@ -78,6 +79,6 @@ zpro = 0.
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 1.0 !> Turbulence intensity !! Inflow condition
-ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 2  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise = 0.10 !> Turbulence intensity (1=100%) !! Intiale condition
 /End

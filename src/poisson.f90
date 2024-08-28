@@ -429,7 +429,8 @@ contains
           end do
        end do
        ! Neuman bondaries condition in x-direction
-       call pressure_neuman_bc_x(pp, nx)
+       call pressure_neuman_bc_x0(pp)
+       call pressure_neuman_bc_xn(pp)
        if (mod(iter, 100) == 0) then ! Print convergence every 100 iterations
           write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
        end if
@@ -538,7 +539,8 @@ contains
           end do
        end do
        ! Neuman bondaries condition in x-direction
-       call pressure_neuman_bc_x(pp, nx)
+       call pressure_neuman_bc_x0(pp)
+       call pressure_neuman_bc_xn(pp)
        if (mod(iter, 100) == 0) then ! Print convergence every 100 iterations
           write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
        end if

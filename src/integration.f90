@@ -227,7 +227,8 @@ contains
     ! Prepare the right-hand side term for the Poisson equation
     rhs = divu_pred / dt
     if (nbcx1 == INFLOW_OUTFLOW) then
-       call pressure_neuman_bc_x(rhs, nx)
+       call pressure_neuman_bc_x0(rhs)
+       call pressure_neuman_bc_xn(rhs)
     end if
 
     ! Solve the Poisson equation to update the pressure field
@@ -462,7 +463,7 @@ contains
     ny = size(ux,2)
     nz = size(ux,3)
     call velocity_dirichlet_bc_xn(bux, buy, buz, old_ux, old_uy, old_uz, &
-         u0, dx, dy, dt, 1) !> 1 -> use u0 
+         u0, dx, dy, dt, 4) !> 1 -> use u0 
     !> 2 -> use velocity mean value of ux(nx-1, :, :)
     !> 3 -> use discret velocity value of ux(nx-1, :, :)
     !> 4 -> use ux_interp for cx evaluation
@@ -493,8 +494,8 @@ contains
     end do
 
     ux(nx,:,:) = bux(:,:)
-    uy(nx,:,:) = buy(:,:) + dpdy(nx,:,:) * dt
-    uz(nx,:,:) = buz(:,:) + dpdz(nx,:,:) * dt
+    uy(nx,:,:) = buy(:,:) !+ dpdy(nx,:,:) * dt
+    uz(nx,:,:) = buz(:,:) !+ dpdz(nx,:,:) * dt
 
     return
   end subroutine apply_outflow_condition

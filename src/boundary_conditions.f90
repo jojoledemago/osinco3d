@@ -5,9 +5,8 @@ module boundary_conditions
 
 contains
 
-  subroutine pressure_neuman_bc_x(pp, nx)
-    !> Apply Neumann boundary conditions in the x-direction: dp(1)/dx = 0 and
-    !> dp(nx)/dx=0
+  subroutine pressure_neuman_bc_x0(pp)
+    !> Apply Neumann boundary conditions in the x-direction: dp(1)/dx = 0 
     !>
     !> This subroutine sets the Neumann boundary conditions for the pressure
     !> field pp at the x-boundaries. It ensures that the gradient of the
@@ -15,12 +14,10 @@ contains
     !> to a no-flux condition.
     !>
     !> INPUT:
-    !> nx          : Number of grid points in the x-direction
     !> OUTPUT:
     !> pp(nx,ny,nz): Pressure field with updated boundary values
     !>               in the x-direction
 
-    integer, intent(in) :: nx
     real(kind=8), intent(inout) :: pp(:,:,:)
 
     real(kind=8) :: ust, qst
@@ -32,11 +29,38 @@ contains
     ! Apply Neumann BC at the first x-boundary
     pp(1 , :, :) = ust * pp(3   , :, :) + qst * pp(2   , :, :)
 
-    ! Apply Neumann BC at the last x-boundary
-    pp(nx, :, :) = ust * pp(nx-2, :, :) + qst * pp(nx-1, :, :)
+    return
+  end subroutine pressure_neuman_bc_x0
+
+  subroutine pressure_neuman_bc_xn(pp)
+    !> Apply Neumann boundary conditions in the x-direction: dp(nx)/dx=0
+    !>
+    !> This subroutine sets the Neumann boundary conditions for the pressure
+    !> field pp at the x-boundaries. It ensures that the gradient of the
+    !> pressure in the x-direction at the boundaries is zero, which corresponds
+    !> to a no-flux condition.
+    !>
+    !> INPUT:
+    !> OUTPUT:
+    !> pp(nx,ny,nz): Pressure field with updated boundary values
+    !>               in the x-direction
+
+    real(kind=8), intent(inout) :: pp(:,:,:)
+
+    real(kind=8) :: ust, qst
+    integer :: nx
+
+    nx = size(pp, 1)
+
+    ! Coefficients for the Neumann boundary conditions (O(dx^2) discretization)
+    ust = -1.d0 / 3.d0
+    qst =  4.d0 / 3.d0
+
+    ! Apply Neumann BC at the first x-boundary
+    pp(nx , :, :) = ust * pp(nx-2   , :, :) + qst * pp(nx-1   , :, :)
 
     return
-  end subroutine pressure_neuman_bc_x
+  end subroutine pressure_neuman_bc_xn
 
   subroutine velocity_dirichlet_bc_x0(ux, uy, uz, inflow)
     !> Apply Dirichlet boundary conditions for velocity components at x=0.

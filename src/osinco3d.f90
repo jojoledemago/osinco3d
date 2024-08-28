@@ -70,8 +70,8 @@ program osinco3d
   call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
        uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
   if (initstat < 1.d-100) then
-  call statistics_calc(ux, uy, uz, nx, ny, nz, &
-      dx, dy, dz, re, 0.d0)
+     call statistics_calc(ux, uy, uz, nx, ny, nz, &
+          dx, dy, dz, re, 0.d0)
   end if
   print *, ""
   print *, "Do you want to start the loop? (yes/no)"

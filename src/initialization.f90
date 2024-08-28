@@ -225,8 +225,13 @@ contains
        derxxp => derxxp_11
        derxi => derxi_11
        derxxi => derxxi_11
+    elseif (nbcx1 == INFLOW_OUTFLOW .and. nbcxn == INFLOW_OUTFLOW) then
+       derxp => derx_22
+       derxxp => derxx_22
+       derxi => derx_22
+       derxxi => derxx_22
     else
-       print *, "Unrecognized boundarx laxer txpes for Y-axis."
+       print *, "Unrecognized boundarx laxer types for X-axis."
        print *, "nbcx1: ", nbcx1, "nbcxn: ", nbcxn
        stop
     end if
@@ -259,7 +264,7 @@ contains
           derzi => derzi_11
           derzzi => derzzi_11
        else
-          print *, "Unrecognized boundarz lazer tzpes for Y-axis."
+          print *, "Unrecognized boundarz lazer types for Z-axis."
           print *, "nbcz1: ", nbcz1, "nbczn: ", nbczn
           stop
        end if

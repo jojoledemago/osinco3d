@@ -29,10 +29,10 @@ z0 = -1.45
 !<--------------->!
 &BoundaryConditions
 !<--------------->!
-nbcx1 = 0
-nbcxn = 0
-nbcy1 = 1
-nbcyn = 1
+nbcx1 = 2
+nbcxn = 2
+nbcy1 = 0
+nbcyn = 0
 nbcz1 = 0
 nbczn = 0
 sim2d = 0
@@ -45,7 +45,7 @@ itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 cfl = 0.04
 irestart = 0
 itstart = 1
-itstop = 15000
+itstop = 5000
 /End
 
 !<--------------->!
@@ -59,7 +59,7 @@ kmax = 1000
 !<--------------->!
 &Scalar
 !<--------------->!
-nscr = 1 !> 1 for scalar equation resolution 
+nscr = 0 !> 1 for scalar equation resolution 
 sc = 1. !> Schmidt number
 /End
 
@@ -77,8 +77,8 @@ zpro = 0.
 !<--------------->!
 &InitInflow
 !<--------------->!
-iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
-inflow_noise = 1.0 !> Turbulence intensity !! Inflow condition
-ici = 1  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.10 !> Turbulence intensity (1=100%) !! Intiale condition
+iin = 1  !> Inflow conditions (0: classic, 1: turbulent)
+inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
+ici = 0  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
 /End

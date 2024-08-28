@@ -214,7 +214,7 @@ contains
        end do
     end if
     magnitude = compute_velocity_magnitude(ux, uy, uz, nx, ny, nz) 
-    pp = 0.d0 + magnitude * magnitude / 2.d0
+    pp = 1.d0 !+ magnitude * magnitude / 2.d0
 
     return
 

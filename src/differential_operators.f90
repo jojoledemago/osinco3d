@@ -22,7 +22,7 @@ contains
 
     real(kind=8), dimension(nx,ny,nz) :: dfx, dfy, dfz
 
-    if (odd == 1) then
+    if (odd == 0) then
        call derxp(dfx, fx, dx)
        call deryp(dfy, fy, dy)
        call derzp(dfz, fz, dz)

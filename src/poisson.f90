@@ -150,7 +150,8 @@ contains
     real(kind=8), dimension(nx,ny,nz) :: p_new
     real(kind=8) :: dx2, dy2, dz2, A, oneondx2, oneondy2, oneondz2
     real(kind=8) :: twoondx2, twoondy2, twoondz2
-    real(kind=8) :: dmax, d, dmax_old
+    real(kind=8) :: dmax, d
+
     integer :: iter, i, j, k
     integer :: ip1, im1, jp1, jm1, kp1, km1
 
@@ -167,7 +168,6 @@ contains
     twoondy2 = 2.d0 * oneondy2
     twoondz2 = 2.d0 * oneondz2
     A = -(twoondx2 + twoondy2 + twoondz2)
-    dmax_old = 1609.d0
     do iter = 1, kmax
        dmax = 0.d0
        do k = 1, nz
@@ -182,7 +182,6 @@ contains
              km1 = k - 1
              kp1 = k + 1
           end if
-
           do j = 1, ny
              ! Conditions aux limites libres en y
              if (j == 1) then
@@ -223,8 +222,6 @@ contains
           write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
        end if
        if (dmax < eps) exit ! Condition d'arrêt
-       !if (abs(dmax_old - dmax) < 1.d-9) exit
-       dmax_old = dmax
     end do
 
     write(*, '(A19,I4,A1,E13.6)') ' Exit iteration : ', iter, ',', dmax

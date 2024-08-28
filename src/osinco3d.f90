@@ -43,7 +43,7 @@ program osinco3d
   call rotational(rotx, roty, rotz, ux, uy, uz, dx, dy, dz, nx, ny, nz)
   call calculate_Q_criterion(q_criterion, ux, uy, uz, dx, dy, dz, nx, ny, nz)
   call divergence(divu, ux, uy, uz, &
-       dx, dy, dz, nx, ny, nz, 0)
+       dx, dy, dz, nx, ny, nz, 1)
   divu_stats = function_stats(divu, nx, ny, nz)
   call print_divu_statistics(divu_stats, .false.)
   if (nscr > 0) then
@@ -69,8 +69,10 @@ program osinco3d
        uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
   call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
        uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
+  if (initstat < 1.d-100) then
   call statistics_calc(ux, uy, uz, nx, ny, nz, &
-       dx, dy, dz, re, 0.d0)
+      dx, dy, dz, re, 0.d0)
+  end if
   print *, ""
   print *, "Do you want to start the loop? (yes/no)"
   read(*, '(A3)') response
@@ -101,11 +103,11 @@ program osinco3d
              itime, itscheme, dx, dy, dz, nx, ny, nz)
      end if
      call divergence(divu_pred, ux_pred, uy_pred, uz_pred, &
-          dx, dy, dz, nx, ny, nz, 0)
+          dx, dy, dz, nx, ny, nz, 1)
      divu_stats = function_stats(divu_pred, nx, ny, nz)
      call print_divu_statistics(divu_stats, .true.)
      call divergence(divu, ux, uy, uz, &
-          dx, dy, dz, nx, ny, nz, 0)
+          dx, dy, dz, nx, ny, nz, 1)
      divu_stats = function_stats(divu, nx, ny, nz)
      call print_divu_statistics(divu_stats, .false.)
 

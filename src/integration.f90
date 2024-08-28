@@ -222,7 +222,7 @@ contains
 
     ! Compute the divergence of the predicted velocity field
     call divergence(divu_pred, ux_pred, uy_pred, uz_pred, &
-         dx, dy, dz, nx, ny, nz, 0)  ! Assume 1 for odd conditions
+         dx, dy, dz, nx, ny, nz, 1)  ! Assume 1 for odd conditions
 
     ! Prepare the right-hand side term for the Poisson equation
     rhs = divu_pred / dt

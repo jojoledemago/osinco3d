@@ -280,7 +280,7 @@ contains
                         tanh((abs(y(j)) - h1) / (2.d0 * theta_1))
                 end if
              else
-                ux(i,j,k) = 0.5d0 * (u2 + u3) + 0.5d0 * (u3- u2) * &
+                ux(i,j,k) = 0.5d0 * (u2 + u3) + 0.5d0 * (u3 - u2) * &
                      tanh((abs(y(j)) - h2) / (2.d0 * theta_2))
                 if (nscr == 1) then
                    phi1 = 1.d0
@@ -488,7 +488,7 @@ contains
     real(kind=8), intent(in) :: dy, u0, init_noise
     integer, intent(in) :: nx, ny, nz
 
-    real(kind=8), dimension(ny, nz) :: ux_noise, uy_noise, uz_noise, white_noise
+    real(kind=8), dimension(nz) :: ux_noise, uy_noise, uz_noise
     real(kind=8), dimension(ny) :: u_base
     integer :: i, j, k
     ! Parameters 
@@ -496,17 +496,14 @@ contains
     call calcul_u_base(u_base, ux(1,:,1), dy)
 
     do i = 1, nx
-       call generate_white_noise(white_noise, ny, nz)
-       call apply_energy_spectrum(ux_noise, white_noise, ny, nz)
-       call generate_white_noise(white_noise, ny, nz)
-       call apply_energy_spectrum(uy_noise, white_noise, ny, nz)
-       call generate_white_noise(white_noise, ny, nz)
-       call apply_energy_spectrum(uz_noise, white_noise, ny, nz)
        do j = 1, ny
+          call  generate_pink_noise(nz, 16, ux_noise, 1024)
+          call  generate_pink_noise(nz, 16, uy_noise, 2048)         
+          call  generate_pink_noise(nz, 16, uz_noise, 4096)         
           do k = 1, nz
-             ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(j,k)
-             uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(j,k)
-             uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(j,k)
+             ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(k)
+             uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(k)
+             uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(k)
           end do
        end do
     end do
@@ -514,6 +511,19 @@ contains
     return
 
   end subroutine add_turbulent_init
+
+  subroutine apply_2dsim(uz)
+    !> Apply 0. to uz velocity compoment in a 2d case
+    !>
+    !> INPUT:
+    !> uz :  Z-component of velocity field
+
+    real(kind=8), intent(inout) :: uz(:,:,:)
+
+    uz = 0.d0
+
+    return
+  end subroutine apply_2dsim
 
 end module initial_conditions
 

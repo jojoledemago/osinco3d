@@ -40,6 +40,9 @@ program osinco3d
   if (iin == 1) then
      call calcul_u_base(u_base, ux(1,:,kpro), dy)
   end if
+  if (sim2d == 1) then
+     call apply_2dsim(uz)
+  end if
   call rotational(rotx, roty, rotz, ux, uy, uz, dx, dy, dz, nx, ny, nz)
   call calculate_Q_criterion(q_criterion, ux, uy, uz, dx, dy, dz, nx, ny, nz)
   call divergence(divu, ux, uy, uz, &

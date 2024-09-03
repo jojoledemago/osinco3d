@@ -41,7 +41,7 @@ git clone git@github.com:jojoledemago/osinco3d.git
 cd src/
 make
 ```
-Use make `clean` to clean compilation directory
+Use `make clean` to clean compilation directory
 
 ## Usage
 

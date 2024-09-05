@@ -13,11 +13,11 @@ ratio = 3.
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 231
+nx = 385
 ny = 385
 nz = 105
 
-xlx = 10.8
+xlx = 10.65
 yly = 10.65
 zlz =  2.9
 
@@ -42,10 +42,10 @@ sim2d = 0
 &AdvanceTime
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-cfl = 0.05
+cfl = 0.07
 irestart = 0
 itstart = 1
-itstop = 35000
+itstop = 23000
 /End
 
 !<--------------->!

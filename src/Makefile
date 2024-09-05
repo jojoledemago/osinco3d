@@ -6,8 +6,8 @@ FFLAGS = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics
 
 # Dossiers de sortie
 SRCDIR = ./
-OBJDIR = ./build
-EXEDIR = ../bin
+OBJDIR = $(SRCDIR)/build
+EXEDIR = $(SRCDIR)/../bin
 
 # Noms des fichiers sources
 SOURCES = $(SRCDIR)/functions.f90 \

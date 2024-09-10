@@ -6,14 +6,14 @@ contains
     implicit none
     integer, intent(in) :: seconds
     integer :: h, m
-    character(len=5) :: hm
+    character(len=6) :: hm
 
     ! Convert seconds to hours, minutes, and remaining seconds
     h = seconds / 3600
     m = mod(seconds, 3600) / 60
 
-    ! Convert integers to character strings and format as h:mm:ss
-    write(hm, '(I02.2, A, I2.2)') h, ':', m
+    ! Convert integers to character strings and format as hh:mm
+    write(hm, '(I3.3, A, I2.2)') h, ':', m
   end function seconds_to_hm
 
   function function_stats(f, nx, ny, nz) result(stats)

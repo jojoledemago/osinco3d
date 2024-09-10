@@ -496,12 +496,12 @@ contains
     call calcul_u_base(u_base, ux(1,:,1), dy)
 
     do i = 1, nx
-      call generate_white_noise(white_noise, ny, nz)
-      call apply_energy_spectrum(ux_noise, white_noise, ny, nz)
-      call generate_white_noise(white_noise, ny, nz)
-      call apply_energy_spectrum(uy_noise, white_noise, ny, nz)
-      call generate_white_noise(white_noise, ny, nz)
-      call apply_energy_spectrum(uz_noise, white_noise, ny, nz)
+       call generate_white_noise(white_noise, ny, nz)
+       call apply_energy_spectrum(ux_noise, white_noise, ny, nz)
+       call generate_white_noise(white_noise, ny, nz)
+       call apply_energy_spectrum(uy_noise, white_noise, ny, nz)
+       call generate_white_noise(white_noise, ny, nz)
+       call apply_energy_spectrum(uz_noise, white_noise, ny, nz)
        do j = 1, ny
           do k = 1, nz
              ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(j, k)

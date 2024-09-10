@@ -1,19 +1,26 @@
 module functions
   implicit none
 contains
-
   function seconds_to_hm(seconds) result(hm)
     implicit none
     integer, intent(in) :: seconds
-    integer :: h, m
-    character(len=6) :: hm
+    integer :: h, m, d
+    character(len=13) :: hm  ! Long enough for "d d hh:mm"
 
-    ! Convert seconds to hours, minutes, and remaining seconds
+    ! Convert seconds to hours and minutes
     h = seconds / 3600
     m = mod(seconds, 3600) / 60
 
-    ! Convert integers to character strings and format as hh:mm
-    write(hm, '(I3.3, A, I2.2)') h, ':', m
+    ! Check if the number of hours exceeds 72
+    if (h <= 72) then
+       ! Format as hh:mm
+       write(hm, '(I2.2, A, I2.2)') h, ':', m
+    else
+       ! Convert to days and hours: d d hh:mm
+       d = h / 24
+       h = mod(h, 24)
+       write(hm, '(I1, A, I2.2, A, I2.2)') d, ' d ', h, ':', m
+    end if
   end function seconds_to_hm
 
   function function_stats(f, nx, ny, nz) result(stats)

@@ -3,11 +3,11 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 4  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
 re = 2200.
-ratio = 3.
+ratio = -1.
 /End
 
 !<--------------->!
@@ -31,8 +31,8 @@ z0 = -1.375
 !<--------------->!
 nbcx1 = 0
 nbcxn = 0
-nbcy1 = 0
-nbcyn = 0
+nbcy1 = 1
+nbcyn = 1
 nbcz1 = 0
 nbczn = 0
 sim2d = 0
@@ -42,7 +42,7 @@ sim2d = 0
 &AdvanceTime
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-cfl = 0.07
+dt = 0.0015
 irestart = 0
 itstart = 1
 itstop = 40000
@@ -51,7 +51,7 @@ itstop = 40000
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.35 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+omega = 1.4 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
 eps = 1.e-5
 kmax = 1000
 /End
@@ -70,7 +70,7 @@ nfre = 2000
 nsve = 20000
 initstat = 10 !> Time for beginng statistic save
 xpro = 2.75
-ypro = 1.
+ypro = 0.
 zpro = 0.
 /End
 

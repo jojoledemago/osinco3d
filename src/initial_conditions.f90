@@ -357,7 +357,6 @@ contains
     real(kind=8), optional, intent(in) :: l0, ratio
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
-    real(kind=8), dimension(nx,ny,nz) :: magnitude
     real(kind=8) :: u1, u2, t1, t2, t3, theta_o
     real(kind=8) :: A, x_disturb
     real(kind=8) :: sigma, pi
@@ -402,8 +401,7 @@ contains
           end do
        end do
     end if
-    magnitude = compute_velocity_magnitude(ux, uy, uz, nx, ny, nz) 
-    pp = 1.d0 !+ magnitude * magnitude / 2.d0
+    pp = 1.d0
 
     return
   end subroutine initialize_mixing_layer

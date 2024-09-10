@@ -229,7 +229,7 @@ contains
     real(kind=8), intent(inout) :: sum_elapsed_time
     real(kind=8) :: elapsed_time, remaining_cpu_time, time_since_start, mean_elapsed_time
     integer :: remaining_it
-    character(len=7) :: remaining_cpu_hm, time_since_start_hm
+    character(len=13) :: remaining_cpu_hm, time_since_start_hm
 
     elapsed_time = end_time - start_time
     sum_elapsed_time = sum_elapsed_time + elapsed_time

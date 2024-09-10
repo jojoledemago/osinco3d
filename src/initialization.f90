@@ -20,7 +20,7 @@ module initialization
   integer :: num, numx
   real(kind=8) :: time, time0               !> Time of simulation
   integer :: itscheme                !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-  real(kind=8) :: dt, cfl, cflx, cfly, cflz !> Time step size and CFL number
+  real(kind=8) :: dt, cfl, cflx, cfly, cflz, cnu !> Time step size and CFL number
   real(kind=8), dimension(3) :: adt, bdt, cdt  !> Coefficients for the current and previous time steps in AB schemes
 
   ! Poisson resolution 
@@ -110,7 +110,7 @@ contains
     ! Namelists
     namelist /Domain/ nx, ny, nz, xlx, yly, zlz, x0, y0, z0
     namelist /BoundaryConditions/ nbcx1, nbcxn, nbcy1, nbcyn, nbcz1, nbczn, sim2d
-    namelist /AdvanceTime/ itscheme, cfl, itstart, itstop, irestart
+    namelist /AdvanceTime/ itscheme, dt, itstart, itstop, irestart
     namelist /FlowParam/ u0, l0, re, typesim, ratio
     namelist /PoissonEq/ omega, eps, kmax
     namelist /Scalar/ nscr, sc
@@ -144,7 +144,7 @@ contains
 
   subroutine variables()
     integer :: i
-    real(kind=8) :: dmin, cnu
+    real(kind=8) :: dmin
 
     allocate(x(nx), y(ny), z(nz))
     allocate(ux(nx,ny,nz), uy(nx,ny,nz), uz(nx,ny,nz), pp(nx,ny,nz))
@@ -178,7 +178,7 @@ contains
     dmin = min(dmin, dx)
     dmin = min(dmin, dy)
     dmin = min(dmin, dz)
-    dt = cfl * dmin / u0
+    cfl = dt * u0 / dmin
     u_ref = u0
     t_ref = xlx / u0
     adt(1) = dt

@@ -40,7 +40,7 @@ contains
   subroutine print_parameters()
     use initialization, only: nx, ny, nz, xlx, yly, zlz, x0, y0, z0, &
          nbcx1, nbcxn, nbcy1, nbcyn, sim2d, &
-         itscheme, cfl, itstart, itstop, &
+         itscheme, dt, itstart, itstop, &
          u0, l0, re, typesim, omega, eps, kmax, &
          nfre, xpro, ypro, zpro, &
          iin, inflow_noise, init_noise, ratio
@@ -49,7 +49,7 @@ contains
     ! Formats
     character(len=20) :: int_format, float_format1, float_format2
     int_format = "(I10)"
-    float_format1 = "(F10.2)" ! For values greater than 1
+    float_format1 = "(F10.3)" ! For values greater than 1
     float_format2 = "(E17.5)" ! For values less than or equal to 1
 
     ! Print domain parameters
@@ -87,8 +87,8 @@ contains
     print *, "Time Integration Parameters:"
     write(*,*) "  Time scheme (itscheme):"
     write(*,int_format) itscheme
-    write(*,*) "  CFL number (cfl):"
-    write(*,float_format1) cfl
+    write(*,*) "  Time step (dt):"
+    write(*,float_format2) dt
     write(*,*) "  Time steps: start (itstart), stop (itstop):"
     write(*,int_format, advance="no") itstart
     write(*,int_format) itstop
@@ -123,7 +123,6 @@ contains
     write(*,float_format1) sc
     print *, ""
 
-
     ! Print visualization parameters
     print *, "Visualization Parameters:"
     write(*,*) "  Frequency (nfre):"
@@ -149,10 +148,10 @@ contains
   end subroutine print_parameters
 
   subroutine print_variables()
-    use initialization, only: nx, ny, nz, xlx, yly, zlz, x, y, z, u0, re, cfl, dt, &
+    use initialization, only: nx, ny, nz, xlx, yly, zlz, x, y, z, u0, re, cfl, cnu, dt, &
          adt, bdt, cdt, t_ref, dx, dy, dz, itstart, itstop, ipro, jpro, kpro, itscheme
     implicit none
-    real(kind=8) :: dmin, cnu
+    real(kind=8) :: dmin, cnux, cnuy, cnuz
 
     ! Formats
     character(len=20) :: int_format, float_format1, float_format2
@@ -172,6 +171,10 @@ contains
        print *, "Predominant viscous terms, cnu =", cnu
     end if
 
+    cnux = 1.d0 / re * (dt / (dx * dx))
+    cnuy = 1.d0 / re * (dt / (dy * dy))
+    cnuz = 1.d0 / re * (dt / (dz * dz))
+
     ! Print calculated variables
     print *, "Calculated Variables:"
 
@@ -179,8 +182,12 @@ contains
     write(*, float_format2) dx
     write(*, float_format2) dy
     write(*, float_format2) dz
-    write(*,*) "  Time step (dt):"
-    write(*, float_format2) dt
+    write(*,*) "  CFL:"
+    write(*, float_format2) cfl
+    write(*,*) "  CFL_diff:"
+    write(*,'(A14,E12.5)') "   CFL_diff_x:", cnux
+    write(*,'(A14,E12.5)') "   CFL_diff_y:", cnuy
+    write(*,'(A14,E12.5)') "   CFL_diff_z:", cnuz
     write(*,*) "  Coefficients for time integration (adt, bdt, cdt):"
     write(*, float_format2) adt(itscheme)
     write(*, float_format2) bdt(itscheme)
@@ -259,12 +266,12 @@ contains
   subroutine print_cpu_time(elapsed_time, remaining_cpu_hm, &
        time_since_start_hm, mean_elapsed_time)
     real(kind=8), intent(in) :: elapsed_time, mean_elapsed_time
-    character(len=7), intent(in) :: remaining_cpu_hm, time_since_start_hm
+    character(len=13), intent(in) :: remaining_cpu_hm, time_since_start_hm
 
     print *, "* CPU time of the simulation"
     write(*, '(A, f07.4, A, f07.4, A)') "  Elapsed time for the loop: ", elapsed_time, " s (", mean_elapsed_time, " s)"
-    write(*, '(A, 5A)') "  Remaining CPU Time (h:m): ", remaining_cpu_hm
-    write(*, '(A, 5A)') "  Time since start (h:m): ", time_since_start_hm
+    write(*, '(A,13A)') "  Remaining CPU Time (h:m): ", remaining_cpu_hm
+    write(*, '(A,13A)') "  Time since start (h:m): ", time_since_start_hm
     print *, "" 
 
   end subroutine print_cpu_time

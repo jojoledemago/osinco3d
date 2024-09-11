@@ -383,7 +383,8 @@ contains
     integer :: n_seed
 
     ! Use the system clock to get a unique seed
-    call random_seed(size = n_seed)
+    ! call random_seed(size = n_seed)
+    n_seed = random_between(256, 512)
     allocate(seed_array(n_seed))
     call system_clock(count=seed)
 

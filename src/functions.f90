@@ -190,4 +190,21 @@ contains
 
   end function contains_nan
 
+  ! Function that generates a random integer between min and max
+  function random_between(min, max) result(r)
+    implicit none
+    integer, intent(in) :: min, max
+    integer :: r
+    real(kind=8) :: random_value
+
+    ! Initialize the random number generator seed
+    call random_seed()
+
+    ! Generate a random real number between 0 and 1
+    call random_number(random_value)
+
+    ! Convert the real number to an integer between min and max
+    r = min + int(random_value * (max - min + 1))
+  end function random_between
+
 end module functions

@@ -12,7 +12,7 @@ contains
     m = mod(seconds, 3600) / 60
 
     ! Check if the number of hours exceeds 72
-    if (h <= 72) then
+    if (h <= 24) then
        ! Format as hh:mm
        write(hm, '(I2.2, A, I2.2)') h, ':', m
     else
@@ -206,5 +206,24 @@ contains
     ! Convert the real number to an integer between min and max
     r = min + int(random_value * (max - min + 1))
   end function random_between
+
+  function cumsum(arr) result(res)
+    !> Cumulative sum of the elements in an array.
+    !>
+    !> INPUT:
+    !> arr         : Input array to compute the cumulative sum
+    !>
+    !> OUTPUT:
+    !> res         : Array of cumulative sums
+
+    real(kind=8), intent(in) :: arr(:)  ! Input array
+    real(kind=8) :: res(size(arr))      ! Cumulative sum result
+    integer :: i
+
+    res(1) = arr(1)
+    do i = 2, size(arr)
+       res(i) = res(i-1) + arr(i)
+    end do
+  end function cumsum
 
 end module functions

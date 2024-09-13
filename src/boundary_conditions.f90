@@ -453,23 +453,4 @@ contains
 
   end subroutine generate_pink_noise
 
-  function cumsum(arr) result(res)
-    !> Cumulative sum of the elements in an array.
-    !>
-    !> INPUT:
-    !> arr         : Input array to compute the cumulative sum
-    !>
-    !> OUTPUT:
-    !> res         : Array of cumulative sums
-
-    real(kind=8), intent(in) :: arr(:)  ! Input array
-    real(kind=8) :: res(size(arr))      ! Cumulative sum result
-    integer :: i
-
-    res(1) = arr(1)
-    do i = 2, size(arr)
-       res(i) = res(i-1) + arr(i)
-    end do
-  end function cumsum
-
 end module boundary_conditions

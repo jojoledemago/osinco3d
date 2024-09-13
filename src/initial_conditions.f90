@@ -486,25 +486,33 @@ contains
     real(kind=8), intent(in) :: dy, u0, init_noise
     integer, intent(in) :: nx, ny, nz
 
-    real(kind=8), dimension(ny, nz) :: ux_noise, uy_noise, uz_noise, white_noise
+    real(kind=8), dimension(nx) :: ux_noise, uy_noise, uz_noise
     real(kind=8), dimension(ny) :: u_base
-    integer :: i, j, k
+    integer :: i, j, k, dec, num_sources
     ! Parameters 
+
+    num_sources = 5
 
     call calcul_u_base(u_base, ux(1,:,1), dy)
 
-    do i = 1, nx
-       call generate_white_noise(white_noise, ny, nz)
-       call apply_energy_spectrum(ux_noise, white_noise, ny, nz)
-       call generate_white_noise(white_noise, ny, nz)
-       call apply_energy_spectrum(uy_noise, white_noise, ny, nz)
-       call generate_white_noise(white_noise, ny, nz)
-       call apply_energy_spectrum(uz_noise, white_noise, ny, nz)
+    do k = 1, nz
        do j = 1, ny
-          do k = 1, nz
-             ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(j, k)
-             uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(j, k)
-             uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(j, k)
+          dec = random_between( 256,  512)
+          call generate_pink_noise(nx, num_sources, ux_noise, dec)
+          dec = random_between(2048, 4096)
+          call generate_pink_noise(nx, num_sources, uy_noise, dec)
+          dec = random_between(1024, 2048)
+          call generate_pink_noise(nx, num_sources, uz_noise, dec)
+          do i = 1, nx 
+             if (i <= nx/2) then
+                ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(i)
+                uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(i)
+                uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(i)
+             else
+                ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(nx + 2 - i)
+                uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(nx + 2 - i)
+                uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(nx + 2 - i)
+             end if
           end do
        end do
     end do

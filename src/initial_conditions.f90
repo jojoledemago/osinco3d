@@ -488,27 +488,26 @@ contains
     integer, intent(in) :: nx, ny, nz
     real(kind=8), dimension(nx, ny, nz) :: ux_noise, uy_noise, uz_noise
     real(kind=8), dimension(ny) :: u_base
-    integer :: i, j, k, dec
-    integer, parameter :: num_sources = 12
+    integer :: i, j, k, n_rand
 
     call calcul_u_base(u_base, ux(1,:,1), dy)
 
     call print_noise_gene("Ux")
-    dec = random_between(256, 512)
-    call  generate_pink_noise(nx, ny, nz, num_sources, ux_noise, dec)
+    n_rand = random_between(256, 512)
+    call generate_pink_noise(nx, ny, nz, ux_noise, n_rand)
     call print_noise_gene("Uy")
-    dec = random_between(256, 512)
-    call  generate_pink_noise(nx, ny, nz, num_sources, uy_noise, dec)
+    n_rand = random_between(256, 512)
+    call generate_pink_noise(nx, ny, nz, uy_noise, n_rand)
     call print_noise_gene("Uz")
-    dec = random_between(256, 512)
-    call  generate_pink_noise(nx, ny, nz, num_sources, uz_noise, dec)
+    n_rand = random_between(256, 512)
+    call generate_pink_noise(nx, ny, nz, uz_noise, n_rand)
 
     do k = 1, nz
        do j = 1, ny
           do i = 1, nx 
-                ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(i,j,k)
-                uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(i,j,k)
-                uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(i,j,k)
+             ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(i,j,k)
+             uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(i,j,k)
+             uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(i,j,k)
           end do
        end do
     end do

@@ -3,6 +3,8 @@ FC = gfortran
 
 # Options de compilation
 FFLAGS = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics
+# Options de liaison des bibliothèques
+LDFLAGS = -lfftw3 -lm
 
 # Dossiers de sortie
 SRCDIR ?= ./
@@ -39,7 +41,7 @@ directories:
 
 # Règle pour créer l'exécutable
 $(EXECUTABLE): $(OBJECTS)
-	$(FC) $(FFLAGS) -o $@ $^
+	$(FC) $(OBJECTS) $(LDFLAGS) -o $@
 
 # Règle pour créer les fichiers objets
 $(OBJDIR)/%.o: $(SRCDIR)/%.f90

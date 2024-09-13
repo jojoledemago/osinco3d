@@ -592,11 +592,11 @@ contains
   end subroutine write_velocity_diverged
 
   subroutine print_noise_gene(direction)
-      character(len=2), intent(in) :: direction
+    character(len=2), intent(in) :: direction
 
-      write(*, '(A55, A2)') " * Generation of the noise for the velocity component: ", direction
+    write(*, '(A55, A2)') " * Generation of the noise for the velocity component: ", direction
 
-      return
-      end subroutine print_noise_gene
+    return
+  end subroutine print_noise_gene
 end module IOfunctions
 

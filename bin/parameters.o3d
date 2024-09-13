@@ -45,7 +45,7 @@ itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 dt = 0.002
 irestart = 0
 itstart = 1
-itstop = 60000
+itstop = 70000
 /End
 
 !<--------------->!
@@ -80,5 +80,5 @@ zpro = 0.0
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
 ici = 2  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise = 0.05 !> Turbulence intensity (1=100%) !! Intiale condition
 /End

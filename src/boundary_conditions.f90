@@ -329,13 +329,13 @@ contains
     real(kind=8), dimension(ny, nz), intent(out) :: u_noise
     real(kind=8), dimension(ny), intent(in) :: u_base
     real(kind=8), intent(in) :: inflow_noise
-    real(kind=8), dimension(ny) :: pink_noise
+    real(kind=8), dimension(1, ny, nz) :: pink_noise
     integer :: j, k
 
+    call generate_pink_noise(1, ny, nz, 16, pink_noise, 256)
     do k = 1, nz
-       call generate_pink_noise(ny, 16, pink_noise, 512+k)
        do j = 1, ny
-          u_noise(j, k) = inflow_noise * pink_noise(j) * u_base(j)
+          u_noise(j, k) = inflow_noise * pink_noise(1, j, k) * u_base(j)
        end do
     end do
   end subroutine inflow_turbulent
@@ -400,57 +400,81 @@ contains
     return
   end subroutine generate_white_noise
 
-  subroutine generate_pink_noise(N, num_sources, pink_noise, dec)
+  subroutine generate_pink_noise(nx, ny, nz, num_sources, pink_noise, dec)
     !> Generates pink noise using the Voss-McCartney method.
     !>
     !> INPUT:
-    !> N           : Number of points to generate
+    !> nx          : Number of points in x direction
+    !> ny          : Number of points in y direction
+    !> nz          : Number of points in z direction
     !> num_sources : Number of random sources to combine
     !> dec         : Integer for shift seed
     !>
     !> OUTPUT:
-    !> pink_noise  : Generated pink noise signal
+    !> pink_noise  : Generated pink noise signal in a 3D array
 
-    integer, intent(in) :: N           ! Number of points to generate
-    integer, intent(in) :: num_sources ! Number of random sources to combine
-    integer, intent(in) :: dec
-    real(kind=8), intent(out) :: pink_noise(N)  ! Generated pink noise signal
-    real(kind=8) :: white_noise(N, num_sources)
+    integer, intent(in) :: nx, ny, nz       ! Dimensions of the noise field
+    integer, intent(in) :: num_sources      ! Number of random sources to combine
+    integer, intent(in) :: dec              ! Seed shift value
+    real(kind=8), intent(out) :: pink_noise(nx, ny, nz)  ! Generated pink noise signal
+    real(kind=8) :: white_noise(nx, ny, nz, num_sources)
     real(kind=8) :: mean_pink, std_pink, max_abs_value
-    integer :: i, j, seed(8)
+    integer :: i, j, k, l, m
     real(kind=8) :: rand_val
-    integer :: clock, clock_max, clock_rate
+    integer :: seed(8)
+    real(kind=8) :: cumsum(nx)
 
     ! Initialize random seed based on the system clock
-    call system_clock(count=clock, count_rate=clock_rate, count_max=clock_max)
-    seed = [(mod(clock + i + dec, clock_max), i = 1, 8)]
+    call system_clock(count=seed(1), count_rate=seed(2), count_max=seed(3))
+    seed = [(mod(seed(1) + i + dec, seed(3)), i = 1, 8)]
     call random_seed(put=seed)
 
     ! Initialize the pink noise array to zero
     pink_noise = 0.0d0
 
     ! Generate white noise and accumulate to obtain pink noise
-    do i = 1, num_sources
-       do j = 1, N
-          call random_number(rand_val)
-          white_noise(j, i) = rand_val * 2.0d0 - 1.0d0
-          ! White noise in the range [-1, 1]
-       end do
+    write(*, '(A)', advance='no') '  '
+    do l = 1, num_sources
+        write(*, '(A)', advance='no') '.'
+        ! Generate white noise for the current source
+        do i = 1, nx
+            do j = 1, ny
+                do k = 1, nz
+                    call random_number(rand_val)
+                    white_noise(i, j, k, l) = rand_val * 2.0d0 - 1.0d0
+                end do
+            end do
+        end do
 
-       ! Accumulate values with a frequency divided by 2^i for each source
-       pink_noise = pink_noise + cumsum(white_noise(:, i)) / 2.0d0**i
+        ! Accumulate values with a frequency divided by 2^l for each source
+        do i = 1, nx
+            do j = 1, ny
+                do k = 1, nz
+                    ! Calculate the cumulative sum for each point
+                    cumsum(1) = white_noise(i, j, k, l)
+                    do m = 2, nx
+                        if (m <= nx) then
+                            cumsum(m) = cumsum(m-1) + white_noise(i, j, k, l)
+                        end if
+                    end do
+                    pink_noise(i, j, k) = pink_noise(i, j, k) + cumsum(nx) / 2.0d0**l
+                end do
+            end do
+        end do
     end do
 
     ! Normalize the pink noise
-    mean_pink = sum(pink_noise) / real(N, kind=8)
-    std_pink = sqrt(sum((pink_noise - mean_pink)**2) / real(N, kind=8))
+    mean_pink = sum(pink_noise) / real(nx * ny * nz, kind=8)
+    std_pink = sqrt(sum((pink_noise - mean_pink)**2) / real(nx * ny * nz, kind=8))
     pink_noise = (pink_noise - mean_pink) / std_pink
     ! Further normalize the pink noise to be within the range [-1, 1]
     max_abs_value = maxval(abs(pink_noise))
     pink_noise = pink_noise / max_abs_value
 
-    return 
+    print *, ""
 
-  end subroutine generate_pink_noise
+    return
+
+end subroutine generate_pink_noise
 
 end module boundary_conditions

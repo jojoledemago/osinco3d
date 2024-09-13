@@ -4,6 +4,7 @@ module initial_conditions
   use initialization
   use derivation
   use visualization
+  use IOfunctions
   implicit none
 
   !> Abstract interface for initializing flow conditions.
@@ -485,34 +486,29 @@ contains
     real(kind=8), intent(inout) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(in) :: dy, u0, init_noise
     integer, intent(in) :: nx, ny, nz
-
-    real(kind=8), dimension(nx) :: ux_noise, uy_noise, uz_noise
+    real(kind=8), dimension(nx, ny, nz) :: ux_noise, uy_noise, uz_noise
     real(kind=8), dimension(ny) :: u_base
-    integer :: i, j, k, dec, num_sources
-    ! Parameters 
-
-    num_sources = 5
+    integer :: i, j, k, dec
+    integer, parameter :: num_sources = 12
 
     call calcul_u_base(u_base, ux(1,:,1), dy)
 
+    call print_noise_gene("Ux")
+    dec = random_between(256, 512)
+    call  generate_pink_noise(nx, ny, nz, num_sources, ux_noise, dec)
+    call print_noise_gene("Uy")
+    dec = random_between(256, 512)
+    call  generate_pink_noise(nx, ny, nz, num_sources, uy_noise, dec)
+    call print_noise_gene("Uz")
+    dec = random_between(256, 512)
+    call  generate_pink_noise(nx, ny, nz, num_sources, uz_noise, dec)
+
     do k = 1, nz
        do j = 1, ny
-          dec = random_between( 256,  512)
-          call generate_pink_noise(nx, num_sources, ux_noise, dec)
-          dec = random_between(2048, 4096)
-          call generate_pink_noise(nx, num_sources, uy_noise, dec)
-          dec = random_between(1024, 2048)
-          call generate_pink_noise(nx, num_sources, uz_noise, dec)
           do i = 1, nx 
-             if (i <= nx/2) then
-                ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(i)
-                uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(i)
-                uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(i)
-             else
-                ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(nx + 2 - i)
-                uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(nx + 2 - i)
-                uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(nx + 2 - i)
-             end if
+                ux(i,j,k) = ux(i,j,k) + u0 * init_noise * u_base(j) * ux_noise(i,j,k)
+                uy(i,j,k) = uy(i,j,k) + u0 * init_noise * u_base(j) * uy_noise(i,j,k)
+                uz(i,j,k) = uz(i,j,k) + u0 * init_noise * u_base(j) * uz_noise(i,j,k)
           end do
        end do
     end do

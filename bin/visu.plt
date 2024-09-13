@@ -8,7 +8,7 @@ set pm3d map # Trace d'une carte
 set palette defined ( 0 0 0 0, 1 1 1 1)
 set size ratio -1 # Echelles orthonormées
 set tics out # Tics vers l'extérieur
-#set cbrange[0:1] # Etendue de la coloration
+set cbrange[0:1] # Etendue de la coloration
 unset xtics # Pas de graduation selon z
 unset ytics
 unset ztics

@@ -358,7 +358,7 @@ contains
     real(kind=8), optional, intent(in) :: l0, ratio
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
-    real(kind=8) :: u1, u2, t1, t2, t3, theta_o
+    real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
     real(kind=8) :: A, x_disturb
     real(kind=8) :: sigma, pi
     integer :: i, j, k, kx
@@ -368,8 +368,8 @@ contains
     pi = acos(-1.d0)
     u1 = (2.d0 * u0 * ratio) / (1.d0 + abs(ratio))
     u2 = u1 / ratio
-    theta_o = 1.d0 / 1.d0 * l0
-    sigma = theta_o
+    sigma = 1.d0 / 1.d0 * l0
+    theta_o = 1.d0 / (5.d0 * l0)
     t1 = 0.5d0 * (u2 + u1) 
     t2 = 0.5d0 * (u1 - u2)
     A = 0.01 * u0
@@ -378,12 +378,13 @@ contains
     do k = 1, nz
        do j = 1, ny
           do i = 1, nx
-             t3 = 2.d0 * y(j) / theta_o
+             t3 = 2.d0 * y(j) / sigma
+             t4 = 2.d0 * y(j) / theta_o
              ux(i,j,k) = x(i) * 0.d0 + t1 - t2 * tanh(t3)
              uy(i,j,k) = y(j) * 0.d0
              uz(i,j,k) = z(k) * 0.d0
              if (nscr == 1) then
-                phi(i,j,k) = 0.5d0 - 0.5d0 * tanh(t3)
+                phi(i,j,k) = 0.5d0 - 0.5d0 * tanh(t4)
              end if
           end do
        end do

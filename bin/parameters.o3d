@@ -79,6 +79,6 @@ zpro = 0.0
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
-ici = 2  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.05 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise = 0.01 !> Turbulence intensity (1=100%) !! Intiale condition
 /End

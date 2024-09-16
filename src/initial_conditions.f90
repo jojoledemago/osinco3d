@@ -9,11 +9,11 @@ module initial_conditions
 
   !> Abstract interface for initializing flow conditions.
   interface
-     subroutine initialize_type(ux, uy, uz, pp, phi, x, y, z, nx, ny, nz, l0, ratio, nscr, ici)
+     subroutine initialize_type(ux, uy, uz, pp, phi, x, y, z, nx, ny, nz, l0, ratio, nscr, ici, init_noise)
        real(kind=8), intent(in) :: x(:), y(:), z(:)
        real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
        real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
-       real(kind=8), optional, intent(in) :: l0, ratio
+       real(kind=8), optional, intent(in) :: l0, ratio, init_noise
        integer, intent(in) :: nx, ny, nz, nscr, ici
      end subroutine initialize_type
   end interface
@@ -24,7 +24,7 @@ module initial_conditions
 contains
 
   subroutine initialize_vortex(ux, uy, uz, pp, phi, &
-       x, y, z, nx, ny, nz, l0, ratio, nscr, ici)
+       x, y, z, nx, ny, nz, l0, ratio, nscr, ici, init_noise)
     !> Initialize the flow field with a vortex centered at the middle of the domain.
     !> INPUT:
     !> x(nx)    : X-coordinates of the domain
@@ -44,11 +44,11 @@ contains
     real(kind=8), intent(in) :: x(:), y(:), z(:)
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
-    real(kind=8), optional, intent(in) :: l0, ratio
+    real(kind=8), optional, intent(in) :: l0, ratio, init_noise
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
     real(kind=8) :: dx, dy
-    real(kind=8) :: cv, rv, xc, yc, zc, r
+    real(kind=8) :: cv, rv, xc, yc, zc, r, A
     real(kind=8), dimension(nx, ny, nz) :: ksi, dksidx, dksidy
     integer :: i, j, k
 
@@ -58,6 +58,7 @@ contains
     cv = u0   ! Max velocity (example value)
     rv = l0   ! Vortex radius (example value)
 
+    A = init_noise * u0
     xc = 0.5d0 * (x(nx) + x(1))
     yc = 0.5d0 * (y(ny) + y(1))
     zc = 0.5d0 * (z(ny) + z(1))
@@ -90,7 +91,7 @@ contains
   end subroutine initialize_vortex
 
   subroutine initialize_taylor_green_vortex(ux, uy, uz, pp, phi, &
-       x, y, z, nx, ny, nz, l0, ratio, nscr, ici)
+       x, y, z, nx, ny, nz, l0, ratio, nscr, ici, init_noise)
     !> Initialize the flow field with the Taylor-Green vortex
     !> INPUT:
     !> x(nx)    : X-coordinates of the domain
@@ -100,6 +101,7 @@ contains
     !> ny       : Number of grid points in the y-direction
     !> nz       : Number of grid points in the z-direction
     !> nscr      : Flag for the scalar transport equation
+    !> init_noise : distirbence intencity for the initiale condition
     !> OUTPUT:
     !> ux(nx, ny, nz) : X-component of velocity initialized with the vortex
     !> uy(nx, ny, nz) : Y-component of velocity initialized with the vortex
@@ -110,16 +112,17 @@ contains
     real(kind=8), intent(in) :: x(:), y(:), z(:)
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
-    real(kind=8), optional, intent(in) :: l0, ratio
+    real(kind=8), optional, intent(in) :: l0, ratio, init_noise
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
     integer :: i, j, k 
     integer, parameter :: n_jets_y=11, n_jets_z=11
-    real(kind=8) :: twopi, y_length, z_length
+    real(kind=8) :: twopi, y_length, z_length, A
 
     print *, "* Condition Initiale for a the Taylor-Green vortex"
     if (ici == 1) print *, "* No excitation of the initial condition in the case of TGV"
 
+    A = init_noise
     twopi = 2.d0 * acos(-1.d0)
     y_length = y(ny) - y(1)
     z_length = z(nz) - z(1)
@@ -143,7 +146,7 @@ contains
   end subroutine initialize_taylor_green_vortex
 
   subroutine initialize_planar_jet(ux, uy, uz, pp, phi, &
-       x, y, z, nx, ny, nz, l0, ratio, nscr, ici)
+       x, y, z, nx, ny, nz, l0, ratio, nscr, ici, init_noise)
     !> Initialize the flow field with a planar jet simulation
     !> INPUT:
     !> x(nx)    : X-coordinates of the domain
@@ -155,6 +158,7 @@ contains
     !> l0       : Height of the planar jet
     !> ratio    : Ratio between u1 and u2
     !> nscr      : Flag for the scalar transport equation
+    !> init_noise : distirbence intencity for the initiale condition
     !> OUTPUT:
     !> ux(nx, ny, nz) : X-component of velocity initialized with the vortex
     !> uy(nx, ny, nz) : Y-component of velocity initialized with the vortex
@@ -165,7 +169,7 @@ contains
     real(kind=8), intent(in) :: x(:), y(:), z(:)
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
-    real(kind=8), optional, intent(in) :: l0, ratio
+    real(kind=8), optional, intent(in) :: l0, ratio, init_noise
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
@@ -201,7 +205,7 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = 0.01 * u0
+       A = init_noise * u0
        kx = 3
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)
@@ -222,7 +226,7 @@ contains
   end subroutine initialize_planar_jet
 
   subroutine initialize_coplanar_jet(ux, uy, uz, pp, phi, x, y, z, &
-       nx, ny, nz, l0, ratio, nscr, ici)
+       nx, ny, nz, l0, ratio, nscr, ici, init_noise)
     !> Initialize the flow field with a co-planar jet simulation
     !> INPUT:
     !> x(nx)    : X-coordinates of the domain
@@ -234,6 +238,7 @@ contains
     !> l0       : Height of the planar jet
     !> ratio    : Ratio between u1 and u2
     !> nscr      : Flag for the scalar transport equation
+    !> init_noise : distirbence intencity for the initiale condition
     !> OUTPUT:
     !> ux(nx, ny, nz) : X-component of velocity initialized with the vortex
     !> uy(nx, ny, nz) : Y-component of velocity initialized with the vortex
@@ -244,7 +249,7 @@ contains
     real(kind=8), intent(in) :: x(:), y(:), z(:)
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
-    real(kind=8), optional, intent(in) :: l0, ratio
+    real(kind=8), optional, intent(in) :: l0, ratio, init_noise
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
     real(kind=8) :: u1, u2, u3, theta_1, theta_2, d1, d2, h1, h2, hm
@@ -296,7 +301,7 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = 0.01 * u0
+       A = init_noise * u0
        kx = 5
        ky = 3
        nharmonics = 6
@@ -332,19 +337,20 @@ contains
   end subroutine initialize_coplanar_jet
 
   subroutine initialize_mixing_layer(ux, uy, uz, pp, phi, x, y, z, &
-       nx, ny, nz, l0, ratio, nscr, ici)
+       nx, ny, nz, l0, ratio, nscr, ici, init_noise)
     !> Initialize the flow field with a mixing simulation
     !> INPUT:
-    !> x(nx)    : X-coordinates of the domain
-    !> y(ny)    : Y-coordinates of the domain
-    !> z(nz)    : Z-coordinates of the domain (not used in 2D cases)
-    !> nx       : Number of grid points in the x-direction
-    !> ny       : Number of grid points in the y-direction
-    !> nz       : Number of grid points in the z-direction
-    !> l0       : Mixing layer thickness
-    !> ratio    : Ratio between u1 and u2
-    !> nscr     : Flag for the scalar transport equation
-    !> ici      : Flag for sub-harmonic disturb
+    !> x(nx)      : X-coordinates of the domain
+    !> y(ny)      : Y-coordinates of the domain
+    !> z(nz)      : Z-coordinates of the domain (not used in 2D cases)
+    !> nx         : Number of grid points in the x-direction
+    !> ny         : Number of grid points in the y-direction
+    !> nz         : Number of grid points in the z-direction
+    !> l0         : Mixing layer thickness
+    !> ratio      : Ratio between u1 and u2
+    !> nscr       : Flag for the scalar transport equation
+    !> ici        : Flag for sub-harmonic disturb
+    !> init_noise : distirbence intencity for the initiale condition
     !> OUTPUT:
     !> ux(nx, ny, nz) : X-component of velocity initialized with the vortex
     !> uy(nx, ny, nz) : Y-component of velocity initialized with the vortex
@@ -355,7 +361,7 @@ contains
     real(kind=8), intent(in) :: x(:), y(:), z(:)
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
-    real(kind=8), optional, intent(in) :: l0, ratio
+    real(kind=8), optional, intent(in) :: l0, ratio, init_noise
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
@@ -390,7 +396,7 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = 0.03 * u0
+       A = init_noise * u0
        kx = 1
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)

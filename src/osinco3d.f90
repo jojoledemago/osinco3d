@@ -24,7 +24,7 @@ program osinco3d
   if (typesim > 0) then
      call set_initialization_type(typesim)
      call init_condition(ux, uy, uz, pp, phi, x, y, z, &
-          nx, ny, nz, l0, ratio, nscr, ici)
+          nx, ny, nz, l0, ratio, nscr, ici, init_noise)
      time0 = 0.d0
   else
      call read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time0)

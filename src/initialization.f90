@@ -77,6 +77,10 @@ module initialization
   ! Variables for CPU time evaluation
   real(kind=8) :: go_time, start_time, end_time, sum_elapsed_time
 
+  ! Variables for LES simulation
+  real(kind=8) :: cs, delta
+  integer :: iles !> 0 -> DNS, 1 -> LES
+
   interface
      subroutine der_type(df, f, d)
        real(kind=8), intent(in) :: f(:,:,:), d
@@ -116,6 +120,7 @@ contains
     namelist /Scalar/ nscr, sc
     namelist /VisuParameters/ nfre, nsve, initstat, xpro, ypro, zpro
     namelist /InitInflow/ iin, inflow_noise, ici, init_noise
+    namelist /LES/ iles, cs
 
     open(unit=10, file='parameters.o3d', status='old', action='read', iostat=io_status)
     if (io_status /= 0) then
@@ -137,6 +142,7 @@ contains
     read(10, Scalar, iostat=io_status)
     read(10, VisuParameters, iostat=io_status)
     read(10, InitInflow, iostat=io_status)
+    read(10, LES, iostat=io_status)
 
     close(10)
 
@@ -181,6 +187,8 @@ contains
     cfl = dt * u0 / dmin
     u_ref = u0
     t_ref = xlx / u0
+    ! Compute the local mesh size for LES 
+    delta = (dx * dy * dz)**(1.d0/3.d0)
     adt(1) = dt
     bdt(1) = 0.d0
     cdt(1) = 0.d0

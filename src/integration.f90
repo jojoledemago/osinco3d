@@ -2,9 +2,10 @@ module integration
   use functions
   use poisson
   use derivation
-  use initialization, only: inflow
+  use initialization
   use diffoper
   use boundary_conditions
+  use les_turbulence
   use IOfunctions, only: print_in_outflow_rate, write_velocity_diverged 
   implicit none
 
@@ -12,17 +13,21 @@ contains
 
   subroutine predict_velocity(ux_pred, uy_pred, uz_pred, ux, uy, uz, &
        fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
-       dx, dy, dz, nx, ny, nz)
+       dx, dy, dz, nx, ny, nz, iles, cs, delta)
 
-    !> Predicts the velocity field for a fluid dynamics simulation using various time integration schemes.
+    !> Predicts the velocity field for a fluid dynamics simulation using 
+    !> various time integration schemes.
     !>
     !> INPUT: 
     !> ux(nx, ny, nz)    : Current x-component of velocity
     !> uy(nx, ny, nz)    : Current y-component of velocity
     !> uz(nx, ny, nz)    : Current z-component of velocity
-    !> fux(nx, ny, nz, 3): Storage for velocity ux fluxes or calculations across time steps
-    !> fuy(nx, ny, nz, 3): Storage for velocity uy fluxes or calculations across time steps
-    !> fuz(nx, ny, nz, 3): Storage for velocity uz fluxes or calculations across time steps
+    !> fux(nx, ny, nz, 3): Storage for velocity ux fluxes or calculations 
+    !> across time steps
+    !> fuy(nx, ny, nz, 3): Storage for velocity uy fluxes or calculations 
+    !> across time steps
+    !> fuz(nx, ny, nz, 3): Storage for velocity uz fluxes or calculations 
+    !> across time steps
     !> re                : Reynolds number
     !> adt(3)            : Coefficients for current time step integration
     !> bdt(3)            : Coefficients for previous time step integration
@@ -35,6 +40,9 @@ contains
     !> nx                : Number of grid points in x-direction
     !> ny                : Number of grid points in y-direction
     !> nz                : Number of grid points in z-direction
+    !> iles              : Integer for apply LES 
+    !> cs                : Smagoranski constant
+    !> delta             : filter size
     !>
     !> OUTPUT: 
     !> ux_pred(nx, ny, nz): Predicted x-component of velocity for next time step
@@ -42,8 +50,8 @@ contains
     !> uz_pred(nx, ny, nz): Predicted z-component of velocity for next time step
 
     integer, intent(in) :: itscheme, itime
-    integer, intent(in) :: nx, ny, nz
-    real(kind=8), intent(in) :: re
+    integer, intent(in) :: nx, ny, nz, iles
+    real(kind=8), intent(in) :: re, cs, delta
     real(kind=8), intent(in) :: dx, dy, dz
     real(kind=8), dimension(3), intent(in) :: adt, bdt, cdt
     real(kind=8), dimension(:,:,:), intent(inout) :: ux, uy, uz
@@ -59,6 +67,9 @@ contains
     real(kind=8), allocatable, dimension(:,:,:) :: d2uxdx2, d2uxdy2, d2uxdz2
     real(kind=8), allocatable, dimension(:,:,:) :: d2uydx2, d2uydy2, d2uydz2
     real(kind=8), allocatable, dimension(:,:,:) :: d2uzdx2, d2uzdy2, d2uzdz2
+    real(kind=8), allocatable, dimension(:,:,:) :: nu_t
+    real(kind=8), allocatable, dimension(:,:,:) :: dtau_dx, dtau_dy, dtau_dz
+    real(kind=8), allocatable, dimension(:,:,:,:) :: tau_ij
 
     print *, "* Predict velocity"
 
@@ -69,6 +80,8 @@ contains
     allocate(d2uxdx2(nx,ny,nz), d2uxdy2(nx,ny,nz), d2uxdz2(nx,ny,nz))
     allocate(d2uydx2(nx,ny,nz), d2uydy2(nx,ny,nz), d2uydz2(nx,ny,nz))
     allocate(d2uzdx2(nx,ny,nz), d2uzdy2(nx,ny,nz), d2uzdz2(nx,ny,nz))
+    allocate(dtau_dx(nx,ny,nz), dtau_dy(nx,ny,nz), dtau_dz(nx,ny,nz))
+    allocate(nu_t(nx,ny,nz), tau_ij(nx,ny,nz,6))
 
     if (itscheme == 1 .or. itime == 1) then
        print *, " Euler"
@@ -94,6 +107,14 @@ contains
     end if
     onere = 1.d0 / re
 
+    if (iles == 1) then
+       print *, " LES model calculation"
+       call calculate_nu_t(nu_t, ux, uy, uz, dx, dy, dz, cs, delta)
+       call calculate_tau_ij(tau_ij, ux, uy, uz, dx, dy, dz, nu_t)
+       call calculate_dtau_ij_dxj(dtau_dx, dtau_dy, dtau_dz, &
+            tau_ij, dx, dy, dz)
+    end if
+
     ! Compute partial first derivatives of ux
     ! with respect to x, y, z axis
     call derxi(duxdx, ux, dx)
@@ -109,6 +130,9 @@ contains
     ! using viscosity and convective termes
     fux(:, :, :, 1) = onere * (d2uxdx2 + d2uxdy2 + d2uxdz2) - &
          (ux * duxdx + uy * duxdy + uz * duxdz)
+    if (iles == 1) then
+       fux(:, :, :, 1) = fux(:, :, :, 1) - dtau_dx
+    end if
     ! Compute predicted velocities ux using the selected time integration scheme
     ux_pred = ux + adu * fux(:, :, :, 1) + &
          bdu * fux(:, :, :, 2) + &
@@ -129,6 +153,9 @@ contains
     ! using viscosity and convective termes
     fuy(:, :, :, 1) = onere * (d2uydx2 + d2uydy2 + d2uydz2) - &
          (ux * duydx + uy * duydy + uz * duydz)
+    if (iles == 1) then
+       fuy(:, :, :, 1) = fuy(:, :, :, 1) - dtau_dy
+    end if
     ! Compute predicted velocities uy using the selected time integration scheme
     uy_pred = uy + adu * fuy(:, :, :, 1) + &
          bdu * fuy(:, :, :, 2) + &
@@ -149,6 +176,9 @@ contains
     ! using viscosity and convective termes
     fuz(:, :, :, 1) = onere * (d2uzdx2 + d2uzdy2 + d2uzdz2) - &
          (ux * duzdx + uy * duzdy + uz * duzdz)
+    if (iles == 1) then
+       fuz(:, :, :, 1) = fuz(:, :, :, 1) - dtau_dz
+    end if
     ! Compute predicted velocities uz using the selected time integration scheme
     uz_pred = uz + adu * fuz(:, :, :, 1) + &
          bdu * fuz(:, :, :, 2) + &

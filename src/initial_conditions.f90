@@ -135,8 +135,8 @@ contains
              pp(i,j,k) = 0.0625d0 * (cos(2.d0*x(i)) + cos(2.d0*y(j)) + cos(2.d0*y(k)) + 2.d0) !https://cfd.ku.edu/hiocfd/case_c3.5.pdf
              if (nscr == 1) then
                 phi(i,j,k) = 0.5d0 * &
-                     (sin(twopi * n_jets_y * (y(j) - y(1)) / y_length) * &                  
-                     sin(twopi * n_jets_z * (z(k) - z(1)) / z_length) + 1.d0)
+                     (cos(twopi * n_jets_y * (y(j) - y(1)) / y_length) * &                  
+                     cos(twopi * n_jets_z * (z(k) - z(1)) / z_length) + 1.d0)
              end if
           end do
        end do
@@ -396,7 +396,7 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = init_noise * u0
+       A = 2.d0 * init_noise * u0
        kx = 1
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)

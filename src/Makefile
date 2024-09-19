@@ -3,8 +3,6 @@ FC = gfortran
 
 # Options de compilation
 FFLAGS = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics
-# Options de liaison des bibliothèques
-LDFLAGS = -lfftw3 -lm
 
 # Dossiers de sortie
 SRCDIR ?= ./
@@ -22,6 +20,7 @@ SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/visualization.f90 \
           $(SRCDIR)/initial_conditions.f90 \
           $(SRCDIR)/differential_operators.f90 \
+          $(SRCDIR)/les_turbulence.f90 \
           $(SRCDIR)/integration.f90 \
           $(SRCDIR)/osinco3d.f90
 # Nom de l'executable
@@ -41,7 +40,7 @@ directories:
 
 # Règle pour créer l'exécutable
 $(EXECUTABLE): $(OBJECTS)
-	$(FC) $(OBJECTS) $(LDFLAGS) -o $@
+	$(FC) $(OBJECTS) -o $@
 
 # Règle pour créer les fichiers objets
 $(OBJDIR)/%.o: $(SRCDIR)/%.f90

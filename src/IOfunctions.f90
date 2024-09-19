@@ -43,7 +43,8 @@ contains
          itscheme, dt, itstart, itstop, &
          u0, l0, re, typesim, omega, eps, kmax, &
          nfre, xpro, ypro, zpro, &
-         iin, inflow_noise, init_noise, ratio
+         iin, inflow_noise, init_noise, ratio, &
+         iles, cs
     implicit none
 
     ! Formats
@@ -116,8 +117,16 @@ contains
     write(*,int_format) kmax
     print *, ""
 
+    ! LES parameters
+    if (iles == 1) then
+       print *, "LES Parameters:"
+       write(*,*) "  Smagorinsky constant (Cs):"
+       write(*,float_format1) cs
+       print *, ""
+    end if
+
     ! Print Scalar parameters
-    write(*,*) "  Flag for scalar transport resolution"
+    write(*,*) "Flag for scalar transport resolution"
     write(*,int_format) nscr
     write(*,*) "  Schmidt number (re):"
     write(*,float_format1) sc
@@ -149,7 +158,7 @@ contains
 
   subroutine print_variables()
     use initialization, only: nx, ny, nz, xlx, yly, zlz, x, y, z, u0, re, cfl, cnu, dt, &
-         adt, bdt, cdt, t_ref, dx, dy, dz, itstart, itstop, ipro, jpro, kpro, itscheme
+         adt, bdt, cdt, t_ref, dx, dy, dz, itstart, itstop, ipro, jpro, kpro, itscheme, delta, iles
     implicit none
     real(kind=8) :: dmin, cnux, cnuy, cnuz
 
@@ -201,6 +210,11 @@ contains
     write(*,'(A5,I4,A4,F7.3)') "   x(", ipro,") = ", x(ipro)
     write(*,'(A5,I4,A4,F7.3)') "   y(", jpro,") = ", y(jpro)
     write(*,'(A5,I4,A4,F7.3)') "   z(", kpro,") = ", z(kpro)
+    if (iles == 1) then
+       write(*,*) "  ++++++++++++++"
+       write(*,*) "  LES simulation"
+       write(*,'(A21,E12.5)') "   Filter size delta:", delta
+    end if
     print *, ""
   end subroutine print_variables
 
@@ -294,6 +308,15 @@ contains
     end if
     print *, ""
   end subroutine print_divu_statistics
+
+  subroutine print_nu_t_statistics(nu_t_stats)
+    real(kind=8), dimension(6), intent(in) :: nu_t_stats
+
+    print *, " Statistics of nu_t:"
+    write(*, '(A22, ES10.3, ES10.3, ES10.3)') &
+         " nu_t min, max, mean:", nu_t_stats(1), nu_t_stats(2), nu_t_stats(3)
+  end subroutine print_nu_t_statistics
+
 
   subroutine print_velocity_values(ux, uy, uz)
     real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)

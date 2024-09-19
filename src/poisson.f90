@@ -150,13 +150,14 @@ contains
     real(kind=8), dimension(nx,ny,nz) :: p_new
     real(kind=8) :: dx2, dy2, dz2, A, oneondx2, oneondy2, oneondz2
     real(kind=8) :: twoondx2, twoondy2, twoondz2
-    real(kind=8) :: dmax, d
+    real(kind=8) :: dmax, d, dmax_old
 
     integer :: iter, i, j, k
     integer :: ip1, im1, jp1, jm1, kp1, km1
 
     print *, "* Poisson solver 0011 start"
 
+    dmax_old = 1609.d0
     p_new = 0.d0
     dx2 = dx * dx
     dy2 = dy * dy
@@ -222,6 +223,11 @@ contains
           write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
        end if
        if (dmax < eps) exit ! Condition d'arrêt
+       if (abs(dmax_old - dmax) < eps/1000.d0) then
+          print *, "* No converged at less than: ", eps
+          exit
+       end if
+       dmax_old = dmax
     end do
 
     write(*, '(A19,I4,A1,E13.6)') ' Exit iteration : ', iter, ',', dmax
@@ -329,14 +335,17 @@ contains
           end do
        end do
        if (mod(iter, 100) == 0) then ! Print convergence every 100 iterations
-          write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
+          write(*, '(A13,I4,A1,E13.6)') ' Iteration: ', iter, ',', dmax
        end if
        if (dmax < eps) exit ! Condition d'arrêt
-       !if (abs(dmax_old - dmax) < 1.d-9) exit
+       if (abs(dmax_old - dmax) < eps/1000.d0) then
+          write(*, '(A29,E10.3)') " No converged at less than: ", eps
+          exit
+       end if
        dmax_old = dmax
     end do
 
-    write(*, '(A19,I4,A1,E13.6)') ' Exit iteration : ', iter, ',', dmax
+    write(*, '(A18,I4,A1,E13.6)') ' Exit iteration: ', iter, ',', dmax
 
     return
 

@@ -5,6 +5,7 @@ program osinco3d
   use integration
   use visualization
   use boundary_conditions
+  use les_turbulence
   implicit none
 
   call print_osinco3d_title()
@@ -87,7 +88,7 @@ program osinco3d
      call CPU_TIME(start_time)
      time = time0 + itime * dt
      write(*,*) "========================"
-     write(*,'(A13, I6, A1, I6)') "Itération: ", itime, "/", itstop
+     write(*,'(A12, I6, A1, I6)') "Iteration: ", itime, "/", itstop
      write(*,'(A8, F10.3, A1, F6.0)') "TIME = ", time, "/", itstop * dt
      write(*,*) "========================"
      call old_values(ux, uy, uz, old_ux, old_uy, old_uz, nx, ny, nz)
@@ -96,7 +97,7 @@ program osinco3d
      end if
      call predict_velocity(ux_pred, uy_pred, uz_pred, ux, uy, uz, &
           fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
-          dx, dy, dz, nx, ny, nz)
+          dx, dy, dz, nx, ny, nz, iles, cs, delta)
      call correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
           nx, ny, nz, dt, omega, eps, kmax)
      call correct_velocity(ux, uy, uz, ux_pred, uy_pred, uz_pred, &

@@ -239,12 +239,13 @@ contains
     return
   end subroutine write_binary
 
-  subroutine write_all_data(ux, uy, uz, rotx, roty, rotz, qcriterion, pp, phi, num, nscr)
+  subroutine write_all_data(ux, uy, uz, rotx, roty, rotz, qcriterion, pp, phi, nu_t, num, nscr, iles)
     implicit none
-    real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+    real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:), pp(:,:,:)
     real(kind=8), intent(in) :: rotx(:,:,:), roty(:,:,:), rotz(:,:,:)
-    real(kind=8), intent(in) :: qcriterion(:,:,:), pp(:,:,:), phi(:,:,:)
-    integer, intent(in) :: num, nscr
+    real(kind=8), intent(in) :: qcriterion(:,:,:), nu_t(:,:,:), phi(:,:,:)
+
+    integer, intent(in) :: num, nscr, iles
     character(len=100) :: binaryname
 
 
@@ -264,14 +265,18 @@ contains
        write(binaryname, '(A,I0,A)') 'outputs/phi_', num, '.bin'
        call write_binary(binaryname, phi)
     end if
+    if (iles == 1) then
+       write(binaryname, '(A,I0,A)') 'outputs/nu_t_', num, '.bin'
+       call write_binary(binaryname, nu_t)
+    end if
 
     return
   end subroutine write_all_data
 
-  subroutine write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, num, nscr)
+  subroutine write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, num, nscr, iles)
     implicit none
     integer, intent(in) :: nx, ny, nz
-    integer, intent(inout) ::  num, nscr
+    integer, intent(inout) ::  num, nscr, iles
     real(kind=8), intent(in) :: dx, dy, dz
     real(kind=8), intent(in) :: x0, y0, z0
     integer :: iunit, ios
@@ -317,6 +322,10 @@ contains
     if (nscr == 1) then
        write(binaryname, '(A,I0,A)') 'phi_', num, '.bin'
        call write_data_item(iunit, binaryname, 'phi', nx, ny, nz)
+    end if
+    if (iles == 1) then
+       write(binaryname, '(A,I0,A)') 'nu_t_', num, '.bin'
+       call write_data_item(iunit, binaryname, 'nu_t', nx, ny, nz)
     end if
 
     write(iunit, '(A)') '</Grid>'

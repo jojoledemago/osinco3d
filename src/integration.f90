@@ -13,7 +13,7 @@ contains
 
   subroutine predict_velocity(ux_pred, uy_pred, uz_pred, ux, uy, uz, &
        fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
-       dx, dy, dz, nx, ny, nz, iles, cs, delta)
+       dx, dy, dz, nx, ny, nz, iles, cs, delta, nu_t)
 
     !> Predicts the velocity field for a fluid dynamics simulation using 
     !> various time integration schemes.
@@ -48,6 +48,7 @@ contains
     !> ux_pred(nx, ny, nz): Predicted x-component of velocity for next time step
     !> uy_pred(nx, ny, nz): Predicted y-component of velocity for next time step
     !> uz_pred(nx, ny, nz): Predicted z-component of velocity for next time step
+    !> nu_t(nx, ny, nz)   : Turbulent viscosity 
 
     integer, intent(in) :: itscheme, itime
     integer, intent(in) :: nx, ny, nz, iles
@@ -55,6 +56,7 @@ contains
     real(kind=8), intent(in) :: dx, dy, dz
     real(kind=8), dimension(3), intent(in) :: adt, bdt, cdt
     real(kind=8), dimension(:,:,:), intent(inout) :: ux, uy, uz
+    real(kind=8), dimension(:,:,:), intent(inout) :: nu_t
     real(kind=8), dimension(:,:,:), intent(in) :: inflow
     real(kind=8), dimension(:,:,:,:), intent(inout) :: fux, fuy, fuz
     real(kind=8), dimension(:,:,:), intent(out) :: ux_pred, uy_pred, uz_pred
@@ -67,7 +69,6 @@ contains
     real(kind=8), allocatable, dimension(:,:,:) :: d2uxdx2, d2uxdy2, d2uxdz2
     real(kind=8), allocatable, dimension(:,:,:) :: d2uydx2, d2uydy2, d2uydz2
     real(kind=8), allocatable, dimension(:,:,:) :: d2uzdx2, d2uzdy2, d2uzdz2
-    real(kind=8), allocatable, dimension(:,:,:) :: nu_t
     real(kind=8), allocatable, dimension(:,:,:) :: dtau_dx, dtau_dy, dtau_dz
     real(kind=8), allocatable, dimension(:,:,:,:) :: tau_ij
 
@@ -81,7 +82,7 @@ contains
     allocate(d2uydx2(nx,ny,nz), d2uydy2(nx,ny,nz), d2uydz2(nx,ny,nz))
     allocate(d2uzdx2(nx,ny,nz), d2uzdy2(nx,ny,nz), d2uzdz2(nx,ny,nz))
     allocate(dtau_dx(nx,ny,nz), dtau_dy(nx,ny,nz), dtau_dz(nx,ny,nz))
-    allocate(nu_t(nx,ny,nz), tau_ij(nx,ny,nz,6))
+    allocate(tau_ij(nx,ny,nz,6))
 
     if (itscheme == 1 .or. itime == 1) then
        print *, " Euler"
@@ -211,6 +212,7 @@ contains
     deallocate(duxdx, duxdy, duxdz, d2uxdx2, d2uxdy2, d2uxdz2)
     deallocate(duydx, duydy, duydz, d2uydx2, d2uydy2, d2uydz2)
     deallocate(duzdx, duzdy, duzdz, d2uzdx2, d2uzdy2, d2uzdz2)
+    deallocate(tau_ij, dtau_dx, dtau_dy, dtau_dz)
     print *, ""
 
     return

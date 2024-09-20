@@ -97,7 +97,7 @@ program osinco3d
      end if
      call predict_velocity(ux_pred, uy_pred, uz_pred, ux, uy, uz, &
           fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
-          dx, dy, dz, nx, ny, nz, iles, cs, delta)
+          dx, dy, dz, nx, ny, nz, iles, cs, delta, nu_t)
      call correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
           nx, ny, nz, dt, omega, eps, kmax, idyn)
      call correct_velocity(ux, uy, uz, ux_pred, uy_pred, uz_pred, &
@@ -132,18 +132,22 @@ program osinco3d
              ux, uy, uz, dx, dy, dz, nx, ny, nz)
         call visualize_2d(x, y, nx, ny, &
              ux(:,:,kpro), uy(:,:,kpro), uz(:,:,kpro), pp(:,:,kpro), &
-             rotx(:,:,kpro), roty(:,:,kpro), rotz(:,:,kpro), q_criterion(:,:,kpro), &
-             divu(:,:,kpro), phi(:,:,kpro), time, "outputs/solution_xy.dat")
+             rotx(:,:,kpro), roty(:,:,kpro), rotz(:,:,kpro), &
+             q_criterion(:,:,kpro), divu(:,:,kpro), phi(:,:,kpro), &
+             time, "outputs/solution_xy.dat")
         call visualize_2d(y, z, ny, nz, &
              ux(ipro,:,:), uy(ipro,:,:), uz(ipro,:,:), pp(ipro,:,:), &
-             rotx(ipro,:,:), roty(ipro,:,:), rotz(ipro,:,:), q_criterion(ipro,:,:), &
-             divu(ipro,:,:), phi(ipro,:,:), time, "outputs/solution_yz.dat")
+             rotx(ipro,:,:), roty(ipro,:,:), rotz(ipro,:,:), & 
+             q_criterion(ipro,:,:), divu(ipro,:,:), phi(ipro,:,:), &
+             time, "outputs/solution_yz.dat")
         call visualize_2d(x, z, nx, nz, &
              ux(:,jpro,:), uy(:,jpro,:), uz(:,jpro,:), pp(:,jpro,:), &
-             rotx(:,jpro,:), roty(:,jpro,:), rotz(:,jpro,:), q_criterion(:,jpro,:), &
-             divu(:,jpro,:), phi(:,jpro,:), time, "outputs/solution_xz.dat")
-        call write_all_data(ux, uy, uz, rotx, roty, rotz, q_criterion, pp, phi, numx, nscr)
-        call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr)
+             rotx(:,jpro,:), roty(:,jpro,:), rotz(:,jpro,:), &
+             q_criterion(:,jpro,:), divu(:,jpro,:), phi(:,jpro,:), &
+             time, "outputs/solution_xz.dat")
+        call write_all_data(ux, uy, uz, rotx, roty, rotz, &
+             q_criterion, pp, phi, nu_t, numx, nscr, iles)
+        call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles)
 
         if (nscr > 0) then
            call visu(phi(:,:,kpro), x, y, nx, ny, num)

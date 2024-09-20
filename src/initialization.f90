@@ -81,6 +81,7 @@ module initialization
   ! Variables for LES simulation
   real(kind=8) :: cs, delta
   integer :: iles !> 0 -> DNS, 1 -> LES
+  real(kind=8), allocatable, dimension(:,:,:) :: nu_t          !> turbulent viscosity field
 
   interface
      subroutine der_type(df, f, d)
@@ -162,6 +163,7 @@ contains
     allocate(fphi(nx,ny,nz,3))
     allocate(rotx(nx,ny,nz), roty(nx,ny,nz), rotz(nx,ny,nz))
     allocate(q_criterion(nx,ny,nz))
+    allocate(nu_t(nx,ny,nz))
     allocate(divu(nx,ny,nz), divu_pred(nx,ny,nz))
     allocate(tt(nx,ny,nz))
     allocate(inflow(ny,nz,4), u_base(ny))

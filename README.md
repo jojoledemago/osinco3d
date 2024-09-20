@@ -125,5 +125,5 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 - `init_noise`: turbulence intensity for the initial condition (0 to 1), representing a fraction of the characteristic velocity `u0`
 
 ### LES
-- `iles`: If 1, If 1, Large Eddy Simulation is enabled
+- `iles`: If 1, Large Eddy Simulation is enabled
 - `cs`: Samgorinsky constant to evaluate $\nu_{t}$

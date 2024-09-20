@@ -26,6 +26,7 @@
   - **Second derivatives**: 4th order.
 - **Poisson equation solver**: Successive Over-Relaxation (SOR) method with a 2nd order finite differences scheme.
 - **Boundary conditions**: Periodic or free-slip conditions in all directions and Dirichlet conditions in the x-direction only.
+- **Large Eddy Simulation**: Standard Smagorinsky model
 - **Visualization**:
   - **2D**: Using Gnuplot.
   - **3D**: Using ParaView (XDMF format).
@@ -103,6 +104,7 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 
 ### PoissonEq
 - `omega`: relaxation coefficient for the Successive Over-Relaxation (SOR) method. The theoretical optimum is: $\omega = \frac{2}{1+\sin(\pi \cdot L_x/n_x)}$
+- `idyn`: If 1, the relaxation coefficient $\omega$ is calculated dynamically at each iteration. 
 - `eps`: convergence criterion for the iterative solver
 - `kmax`: maximum number of iterations allowed for the solver
 
@@ -121,3 +123,7 @@ The `parameters.o3d` file contains various parameters that control the simulatio
 - `inflow_noise`: turbulence intensity at the inlet boundary (0 to 1), representing a fraction of the characteristic velocity `u0`
 - `ici`: initial condition type (0: classical, 1: oscillation, 2: noise, 3: both)
 - `init_noise`: turbulence intensity for the initial condition (0 to 1), representing a fraction of the characteristic velocity `u0`
+
+### LES
+- `iles`: If 1, If 1, Large Eddy Simulation is enabled
+- `cs`: Samgorinsky constant to evaluate $\nu_{t}$

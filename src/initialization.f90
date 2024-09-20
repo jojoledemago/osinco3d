@@ -179,7 +179,7 @@ contains
     fphi = 0.d0
 
     num = 0
-    numx = 1
+    numx = 0
     dx = xlx / real(nx - 1, kind=8)
     dy = yly / real(ny - 1, kind=8)
     dz = zlz / real(nz - 1, kind=8)

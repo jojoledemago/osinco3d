@@ -14,16 +14,16 @@ ratio = -1.
 &Domain
 !<--------------->!
 nx = 257
-ny = 513
-nz = 065
+ny = 385
+nz = 129
 
-xlx =  5.5
-yly = 11.0
-zlz =  1.375
+xlx = 6.283185307179586
+yly = 9.42477796076938
+zlz = 3.141592653589793
 
 x0 =  0. 
-y0 = -5.5
-z0 = -0.6875
+y0 = -4.71238898038469
+z0 = -1.5707963267948966
 /End
 
 !<--------------->!
@@ -70,7 +70,7 @@ sc = 1. !> Schmidt number
 nfre = 2000
 nsve = 20000
 initstat = 10 !> Time for beginng statistic save
-xpro = 2.75
+xpro = 3.141592653589793
 ypro = 0.
 zpro = 0.
 /End

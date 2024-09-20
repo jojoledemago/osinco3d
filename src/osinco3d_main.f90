@@ -81,6 +81,9 @@ program osinco3d
        uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
   call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
        uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
+  call write_all_data(ux, uy, uz, rotx, roty, rotz, &
+       q_criterion, pp, phi, nu_t, numx, nscr, iles)
+  call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles)
   if (initstat < 1.d-100) then
      call statistics_calc(ux, uy, uz, nx, ny, nz, &
           dx, dy, dz, re, 0.d0)

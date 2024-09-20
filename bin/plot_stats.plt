@@ -19,7 +19,7 @@ set grid layerdefault   lt 0 linecolor 0 linewidth 0.500,  lt 0 linecolor 0 line
 unset raxis
 set key notitle
 set key fixed right top vertical Right noreverse enhanced autotitle box
-set key noinvert samplen 4 spacing 1 width 0 height 0 
+set key noinvert samplen 4 spacing 1 width 1 height 0.5
 set key maxcolumns 0 maxrows 0
 set key noopaque
 set y2tics
@@ -36,5 +36,5 @@ set cblabel ""
 set cblabel  font "" textcolor lt -1 rotate
 set cbrange [ * : * ] noreverse writeback
 set locale "fr_FR.UTF-8"
-plot "outputs/stats.dat" u 1:3 w l dt 2 lw 3 t '{/Symbol e}_t osinco3d', "outputs/stats.dat" u 1:6 w l dt 2 lw 3 t '<U_x>^2 osinco3d' axes x1y2, "outputs/stats.dat" u 1:8 w l dt 2 lw 3 t '<U_z>^2 osinco3d' axes  x1y2
+plot "outputs/stats.dat" u 1:3 w l dt 5 lw 3 lt 2 t '{/Symbol e}_t osinco3d', "outputs/stats.dat" u 1:6 w l dt 5 lw 3 lt 4 t '<U_x>^2 osinco3d' axes x1y2, "outputs/stats.dat" u 1:8 w l dt 5 lw 3 lt 6 t '<U_z>^2 osinco3d' axes  x1y2
 #    EOF

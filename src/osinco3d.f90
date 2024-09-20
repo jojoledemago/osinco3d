@@ -99,7 +99,7 @@ program osinco3d
           fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
           dx, dy, dz, nx, ny, nz, iles, cs, delta)
      call correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
-          nx, ny, nz, dt, omega, eps, kmax)
+          nx, ny, nz, dt, omega, eps, kmax, idyn)
      call correct_velocity(ux, uy, uz, ux_pred, uy_pred, uz_pred, &
           pp, dt, dx, dy, dz, nx, ny, nz)
      if (nscr == 1) then

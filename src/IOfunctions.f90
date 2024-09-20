@@ -44,7 +44,7 @@ contains
          u0, l0, re, typesim, omega, eps, kmax, &
          nfre, xpro, ypro, zpro, &
          iin, inflow_noise, init_noise, ratio, &
-         iles, cs
+         iles, cs, idyn
     implicit none
 
     ! Formats
@@ -115,6 +115,11 @@ contains
     write(*,float_format2) eps
     write(*,*) "  Maximum iterations (kmax):"
     write(*,int_format) kmax
+    if (idyn == 1) then
+       write(*,*) "  Dynamic procedure for omega: on"
+    else 
+       write(*,*) "  Dynamic procedure for omega: off"
+    end if
     print *, ""
 
     ! LES parameters
@@ -321,8 +326,8 @@ contains
   subroutine print_velocity_values(ux, uy, uz)
     real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
 
-    write(*, '(A26, 3E13.5)') "* Velocities U, V, W min:", minval(ux), minval(uy), minval(uz)
-    write(*, '(A26, 3E13.5)') "* Velocities U, V, W max:", maxval(ux), maxval(uy), maxval(uz)
+    write(*, '(A26, 3F12.8)') "* Velocities U, V, W min:", minval(ux), minval(uy), minval(uz)
+    write(*, '(A26, 3F12.8)') "* Velocities U, V, W max:", maxval(ux), maxval(uy), maxval(uz)
     print *, ""
 
     return

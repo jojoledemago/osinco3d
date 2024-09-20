@@ -396,7 +396,7 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = 2.d0 * init_noise * u0
+       A = init_noise * u0
        kx = 1
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)

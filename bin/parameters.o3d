@@ -3,38 +3,38 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 2  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 5000.
-ratio = 1.0
+re = 4400.
+ratio = -1.
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 185
-ny = 185
-nz = 185
+nx = 257
+ny = 513
+nz = 065
 
-xlx = 3.141592653589793
-yly = 3.141592653589793
-zlz = 3.141592653589793
+xlx =  5.5
+yly = 11.0
+zlz =  1.375
 
-x0 = 0. 
-y0 = 0. 
-z0 = 0. 
+x0 =  0. 
+y0 = -5.5
+z0 = -0.6875
 /End
 
 !<--------------->!
 &BoundaryConditions
 !<--------------->!
-nbcx1 = 1 
-nbcxn = 1 
-nbcy1 = 1 
-nbcyn = 1 
-nbcz1 = 1 
-nbczn = 1
+nbcx1 = 0
+nbcxn = 0
+nbcy1 = 1
+nbcyn = 1
+nbcz1 = 0
+nbczn = 0
 sim2d = 0
 /End
 
@@ -42,17 +42,18 @@ sim2d = 0
 &AdvanceTime
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-dt = 0.0008
+dt = 0.002
 irestart = 0
 itstart = 1
-itstop = 35000
+itstop = 40000
 /End
 
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.857 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
-eps = 1.e-6
+omega = 1.976 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+idyn = 1 !> dynamic adjust omega 
+eps = 1.e-5
 kmax = 5000
 /End
 
@@ -66,12 +67,12 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 1000
-nsve = 10000
-initstat = 0. !> Time for beginng statistic save
-xpro = 1.5707963267948966
-ypro = 1.5707963267948966
-zpro = 1.5707963267948966
+nfre = 2000
+nsve = 20000
+initstat = 10 !> Time for beginng statistic save
+xpro = 2.75
+ypro = 0.
+zpro = 0.
 /End
 
 !<--------------->!
@@ -79,13 +80,13 @@ zpro = 1.5707963267948966
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
-ici = 0  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.01 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise = 0.015 !> Turbulence intensity (1=100%) !! Intiale condition
 /End
 
 !<--------------->!
 &LES
 !<--------------->!
-iles = 1  !> 1 for LES 
-cs = 0.10 !> Smagorinsky constant
+iles = 1
+cs = 0.17
 /END

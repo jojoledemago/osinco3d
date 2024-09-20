@@ -217,7 +217,7 @@ contains
   end subroutine predict_velocity
 
   subroutine correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
-       nx, ny, nz, dt, omega, eps, kmax)
+       nx, ny, nz, dt, omega, eps, kmax, idyn)
 
     !> This subroutine corrects the pressure field using the divergence of the predicted velocity field
     !> and solves the Poisson equation to enforce incompressibility (divergence-free condition).
@@ -231,17 +231,18 @@ contains
     !> dz                   : Grid spacing in the z-direction
     !> nx, ny, nz           : Number of grid points in the x, y, z directions
     !> dt                   : Time step size
-    !> omega                : Relaxation factor for SOR solver
     !> eps                  : Convergence criterion for SOR solver
     !> kmax                 : Maximum number of iterations for SOR solver
+    !> idyn                 : Flg for omega dynamic
     !>
     !> OUTPUT:
     !> pp(nx, ny, nz)       : Updated pressure field after convergence
+    !> omega                : Relaxation factor for SOR solver
 
-    real(kind=8), intent(inout) :: pp(:,:,:)
+    real(kind=8), intent(inout) :: pp(:,:,:), omega
     real(kind=8), intent(in) :: ux_pred(:,:,:), uy_pred(:,:,:), uz_pred(:,:,:)
-    real(kind=8), intent(in) :: dx, dy, dz, dt, omega, eps
-    integer, intent(in) :: nx, ny, nz, kmax
+    real(kind=8), intent(in) :: dx, dy, dz, dt, eps
+    integer, intent(in) :: nx, ny, nz, kmax, idyn
 
     real(kind=8), allocatable :: divu_pred(:,:,:), rhs(:,:,:)
 
@@ -263,7 +264,7 @@ contains
 
     ! Solve the Poisson equation to update the pressure field
     call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, &
-         omega, eps, kmax)
+         omega, eps, kmax, idyn)
 
     ! Free allocated memory
     deallocate(divu_pred, rhs)

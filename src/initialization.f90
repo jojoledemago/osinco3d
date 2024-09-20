@@ -26,6 +26,7 @@ module initialization
   ! Poisson resolution 
   real(kind=8) :: omega  !> relaxation parameter (SOR)
   real(kind=8) :: eps    !> Convergence criteria
+  integer :: idyn        !> idyn = 1 : dynamic omega
   integer :: kmax        !> Maximum iterations
 
   ! Flow parameters
@@ -90,12 +91,12 @@ module initialization
 
   interface
      subroutine poi_type(pp, rhs, dx, dy, dz, nx, ny, nz, &
-          omega, eps, kmax)
-       real(kind=8), intent(inout) :: pp(:,:,:)
+          omega, eps, kmax, idyn)
+       real(kind=8), intent(inout) :: pp(:,:,:), omega
        real(kind=8), intent(in) :: rhs(:,:,:)
        real(kind=8), intent(in) :: dx, dy, dz
-       real(kind=8), intent(in) :: omega, eps
-       integer, intent(in) :: nx, ny, nz, kmax
+       real(kind=8), intent(in) :: eps
+       integer, intent(in) :: nx, ny, nz, kmax, idyn
      end subroutine poi_type
   end interface
 
@@ -116,7 +117,7 @@ contains
     namelist /BoundaryConditions/ nbcx1, nbcxn, nbcy1, nbcyn, nbcz1, nbczn, sim2d
     namelist /AdvanceTime/ itscheme, dt, itstart, itstop, irestart
     namelist /FlowParam/ u0, l0, re, typesim, ratio
-    namelist /PoissonEq/ omega, eps, kmax
+    namelist /PoissonEq/ omega, idyn, eps, kmax
     namelist /Scalar/ nscr, sc
     namelist /VisuParameters/ nfre, nsve, initstat, xpro, ypro, zpro
     namelist /InitInflow/ iin, inflow_noise, ici, init_noise

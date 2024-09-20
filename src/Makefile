@@ -22,7 +22,7 @@ SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/differential_operators.f90 \
           $(SRCDIR)/les_turbulence.f90 \
           $(SRCDIR)/integration.f90 \
-          $(SRCDIR)/osinco3d.f90
+          $(SRCDIR)/osinco3d_main.f90
 # Nom de l'executable
 EXECUTABLE = $(EXEDIR)/osinco3d.app
 

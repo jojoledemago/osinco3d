@@ -3,26 +3,26 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 3  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 4400.
-ratio = -1.
+re = 5000.
+ratio = 0.08
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
 nx = 257
-ny = 385
+ny = 257
 nz = 129
 
-xlx = 6.283185307179586
-yly = 9.42477796076938
-zlz = 3.141592653589793
+xlx =  6.283185307179586
+yly =  6.283185307179586
+zlz =  3.141592653589793
 
 x0 =  0. 
-y0 = -4.71238898038469
+y0 = -3.141592653589793
 z0 = -1.5707963267948966
 /End
 
@@ -31,8 +31,8 @@ z0 = -1.5707963267948966
 !<--------------->!
 nbcx1 = 0
 nbcxn = 0
-nbcy1 = 1
-nbcyn = 1
+nbcy1 = 0
+nbcyn = 0
 nbcz1 = 0
 nbczn = 0
 sim2d = 0
@@ -42,7 +42,7 @@ sim2d = 0
 &AdvanceTime
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-dt = 0.001
+dt = 0.0016
 irestart = 0
 itstart = 1
 itstop = 40000
@@ -51,10 +51,10 @@ itstop = 40000
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.976 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
-idyn = 1 !> dynamic adjust omega 
+omega = 1.999 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+idyn = 1
 eps = 1.e-5
-kmax = 5000
+kmax = 1000
 /End
 
 !<--------------->!
@@ -70,8 +70,8 @@ sc = 1. !> Schmidt number
 nfre = 2000
 nsve = 20000
 initstat = 10 !> Time for beginng statistic save
-xpro = 3.141592653589793
-ypro = 0.
+xpro = 2.75
+ypro = 0.5
 zpro = 0.
 /End
 
@@ -80,13 +80,13 @@ zpro = 0.
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
-ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.015 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 1  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
 /End
 
 !<--------------->!
 &LES
 !<--------------->!
 iles = 1
-cs = 0.17
-/END
+cs = 0.1
+/End

@@ -232,9 +232,9 @@ contains
     call derzp(dtauxz_dz, tau_ij(:,:,:,3), dz)
 
     ! Sum up contributions for each component
-    dtau_dx(:,:,:) = dtauxx_dx(:,:,:) + dtauxy_dx(:,:,:) + dtauxz_dx(:,:,:)  ! d(tau_ij)/dxj for x-component
-    dtau_dy(:,:,:) = dtauxx_dy(:,:,:) + dtauxy_dy(:,:,:) + dtauxz_dy(:,:,:)  ! d(tau_ij)/dyj for y-component
-    dtau_dz(:,:,:) = dtauxx_dz(:,:,:) + dtauxy_dz(:,:,:) + dtauxz_dz(:,:,:)  ! d(tau_ij)/dzj for z-component
+    dtau_dx = dtauxx_dx + dtauxy_dx + dtauxz_dx  ! d(tau_ij)/dxj for x-component
+    dtau_dy = dtauxx_dy + dtauxy_dy + dtauxz_dy  ! d(tau_ij)/dyj for y-component
+    dtau_dz = dtauxx_dz + dtauxy_dz + dtauxz_dz  ! d(tau_ij)/dzj for z-component
 
     ! Deallocate arrays
     deallocate(dtauxx_dx, dtauxy_dx, dtauxz_dx)

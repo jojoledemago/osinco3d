@@ -26,15 +26,15 @@ set y2tics
 set xlabel "t" 
 set xlabel  font "" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse writeback
-set ylabel "{/Symbol e}_t" 
+set y2label "{/Symbol e}_t" 
 set ylabel  font "" textcolor lt -1 rotate
-set y2label "<U_i>^2" 
+set ylabel "<U_i>^2 or E_k" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ 0 : 0.016 ] noreverse writeback
-set y2range [ 0 : 0.16 ] noreverse writeback
+set yrange [ * : * ] noreverse writeback
+set y2range [ * : * ] noreverse writeback
 set cblabel "" 
 set cblabel  font "" textcolor lt -1 rotate
 set cbrange [ * : * ] noreverse writeback
 set locale "fr_FR.UTF-8"
-plot "outputs/stats.dat" u 1:3 w l dt 5 lw 3 lt 2 t '{/Symbol e}_t osinco3d', "outputs/stats.dat" u 1:6 w l dt 5 lw 3 lt 4 t '<U_x>^2 osinco3d' axes x1y2, "outputs/stats.dat" u 1:8 w l dt 5 lw 3 lt 6 t '<U_z>^2 osinco3d' axes  x1y2
+plot "outputs/stats.dat" u 1:6 w l dt 5 lw 3 lt 4 t '<U_x>^2', "outputs/stats.dat" u 1:7 w l dt 4 lw 3 lt 5 t '<U_y>^2', "outputs/stats.dat" u 1:8 w l dt 3 lw 3 lt 6 t '<U_z>^2', "outputs/stats.dat" u 1:2 w l dt 1 lw 3 lt 2 t 'E_k', "outputs/stats.dat" u 1:3 w l dt 2 lw 3 lt 7 t '{/Symbol e}_t' axes x1y2
 #    EOF

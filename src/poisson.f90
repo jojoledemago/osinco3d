@@ -107,6 +107,7 @@ contains
        end do
        if (mod(iter, 100) == 0) then ! Print convergence every 100 iterations
           write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
+          if (idyn == 1) write(*,'(A23, F5.3)') ' With dynamic omega = ', omega
        end if
        if (dmax < eps) exit ! Condition d'arrêt
        if (abs(dmax_old - dmax) < eps/1000.d0) then
@@ -124,6 +125,7 @@ contains
     end do
 
     write(*, '(A19,I4,A1,E13.6)') ' Exit iteration : ', iter, ',', dmax
+    if (idyn == 1) write(*,'(A23, F5.3)') ' With dynamic omega = ', omega
 
     return
 
@@ -355,7 +357,8 @@ contains
           end do
        end do
        if (mod(iter, 100) == 0) then ! Print convergence every 100 iterations
-          write(*, '(A13,I4,A1,E13.6)') ' Iteration: ', iter, ',', dmax
+          write(*, '(A14,I4,A1,E13.6)') ' Iteration : ', iter, ',', dmax
+          if (idyn == 1) write(*,'(A23, F5.3)') ' With dynamic omega = ', omega
        end if
        if (dmax < eps) exit ! Condition d'arrêt
        if (abs(dmax_old - dmax) < eps/1000.d0) then
@@ -366,7 +369,7 @@ contains
           if (dmax > dmax_old) then
              omega = omega * (2.d0 - factor) ! Reduce omega if convergence deteriorates
           else if (dmax < 0.1d0 * dmax_old) then
-             omega = min(omega * factor, 2.0d0) ! Increase omega if convergence is good
+             omega = min(omega * factor, 2.d0) ! Increase omega if convergence is good
           end if
        end if
        dmax_old = dmax

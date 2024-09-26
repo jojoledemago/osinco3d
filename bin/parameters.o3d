@@ -3,19 +3,19 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 3  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
 re = 5000.
-ratio = 0.08
+ratio = -1.0
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 257
-ny = 257
-nz = 129
+nx = 201
+ny = 201
+nz = 101
 
 xlx =  6.283185307179586
 yly =  6.283185307179586
@@ -31,8 +31,8 @@ z0 = -1.5707963267948966
 !<--------------->!
 nbcx1 = 0
 nbcxn = 0
-nbcy1 = 0
-nbcyn = 0
+nbcy1 = 1
+nbcyn = 1
 nbcz1 = 0
 nbczn = 0
 sim2d = 0
@@ -45,34 +45,34 @@ itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 dt = 0.0016
 irestart = 0
 itstart = 1
-itstop = 40000
+itstop = 20000
 /End
 
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.999 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
-idyn = 1
-eps = 1.e-5
+omega = 1.9 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+idyn = 0
+eps = 1.e-6
 kmax = 1000
 /End
 
 !<--------------->!
 &Scalar
 !<--------------->!
-nscr = 0 !> 1 for scalar equation resolution 
+nscr = 1 !> 1 for scalar equation resolution 
 sc = 1. !> Schmidt number
 /End
 
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 2000
-nsve = 20000
+nfre = 1000
+nsve = 10000
 initstat = 10 !> Time for beginng statistic save
-xpro = 2.75
-ypro = 0.5
-zpro = 0.
+xpro = 3.141592653589793
+ypro = 0.0
+zpro = 0.0
 /End
 
 !<--------------->!
@@ -80,8 +80,8 @@ zpro = 0.
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
-ici = 1  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise = 0.05 !> Turbulence intensity (1=100%) !! Intiale condition
 /End
 
 !<--------------->!

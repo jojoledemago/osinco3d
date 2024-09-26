@@ -63,15 +63,15 @@ contains
     ! Calculate partial derivatives necessary for the curl
     call deryp(duzdy, uz, dy)  ! Derivative of uz with respect to y
     call derzp(duydz, uy, dz)  ! Derivative of uy with respect to z
-    rotx(:,:,:) = duzdy - duydz
+    rotx = duzdy - duydz
 
     call derzp(duxdz, ux, dz)  ! Derivative of ux with respect to z
     call derxp(duzdx, uz, dx)  ! Derivative of uz with respect to x
-    roty(:,:,:) = duxdz - duzdx
+    roty = duxdz - duzdx
 
     call derxp(duydx, uy, dx)  ! Derivative of uy with respect to x
     call deryp(duxdy, ux, dy)  ! Derivative of ux with respect to y
-    rotz(:,:,:) = duydx - duxdy
+    rotz = duydx - duxdy
 
     return
   end subroutine rotational

@@ -204,7 +204,7 @@ contains
 
     print *, '* ENTREE VISU'
     open(10,file='tampon.dat',form='formatted')
-    max_value = maxval(f)
+    max_value = maxval(abs(f))
     do j=2,ny-1
        do i=2,nx-1
           write(10,*) x(i), y(j), f(i,j) / max_value
@@ -215,7 +215,7 @@ contains
     call system('gnuplot visu.plt')
     write(suffixe,'(i4)') num+1000
     call system('mv tampon.jpeg images/image'//suffixe(1:4)//'.jpeg')
-    call system('rm tampon.dat')
+    !call system('rm tampon.dat')
     num=num+1
 
     return

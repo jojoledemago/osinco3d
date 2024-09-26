@@ -378,9 +378,6 @@ contains
     theta_o = 1.d0 / (5.d0 * l0)
     t1 = 0.5d0 * (u2 + u1) 
     t2 = 0.5d0 * (u1 - u2)
-    A = 0.01 * u0
-    kx = 2
-    dy = y(2) - y(1)
     do k = 1, nz
        do j = 1, ny
           do i = 1, nx
@@ -397,7 +394,7 @@ contains
     end do
     if (ici == 1 .or. ici == 3) then
        A = init_noise * u0
-       kx = 1
+       kx = 3
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)
        do k = 1, nz

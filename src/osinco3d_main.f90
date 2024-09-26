@@ -58,7 +58,7 @@ program osinco3d
        dx, dy, dz, nx, ny, nz, 1)
   divu_stats = function_stats(divu, nx, ny, nz)
   call print_divu_statistics(divu_stats, .false.)
-  if (nscr > 0) then
+  if (nscr == 1) then
      call visu(phi(:,:,kpro), x, y, nx, ny, num)
   else 
      call visu(rotz(:,:,kpro), x, y, nx, ny, num)
@@ -160,7 +160,7 @@ program osinco3d
              q_criterion, pp, phi, nu_t, numx, nscr, iles)
         call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles)
 
-        if (nscr > 0) then
+        if (nscr == 1) then
            call visu(phi(:,:,kpro), x, y, nx, ny, num)
         else 
            call visu(rotz(:,:,kpro), x, y, nx, ny, num)
@@ -181,8 +181,8 @@ program osinco3d
                 dx, dy, dz, re, time)
         end if
      end if
-     if (itime == nsve) then
-        call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)
+     if (modulo(itime, nsve) == 0) then
+        call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, itime)
      end if
      call CPU_TIME(end_time)
      call calcul_cpu_time(go_time, start_time, end_time, itime, &

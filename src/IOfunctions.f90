@@ -361,7 +361,7 @@ contains
     return
   end subroutine print_cfl
 
-  subroutine save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)
+  subroutine save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, itime)
     !> Save the flow state in a binary file to eventually restart the 
     !> simulation
     !> INPUT
@@ -376,15 +376,17 @@ contains
     !> ny      : number of grid points in y-direction
     !> nz      : number of grid points in z-direction
     !> time    : time from the beginning of the simulation
-    integer, intent(in) :: nx, ny, nz
+    !> itiem   : index of the time step
+    integer, intent(in) :: nx, ny, nz, itime
     real(kind=8), intent(in) :: x(nx), y(ny), z(nz)
     real(kind=8), intent(in) :: ux(nx, ny, nz), uy(nx, ny, nz), uz(nx, ny, nz), pp(nx, ny, nz)
     real(kind=8), intent(in) :: time
 
-    character(len=10), parameter :: filename = "fields.bin"
+    character(len=30) :: filename
     integer, parameter :: iunit = 101
     integer :: ios
 
+    write(filename, '(A,I0.6,A)') "fields_", itime, ".bin"
     print *, "* Save flow state in :", filename
 
     open(unit=iunit, file=filename, status='replace', access='stream', &
@@ -401,6 +403,7 @@ contains
 
     close(iunit)
     return
+
   end subroutine save_fields
 
   subroutine read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)

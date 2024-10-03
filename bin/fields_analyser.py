@@ -33,6 +33,13 @@ def compute_average_velocity(ux, uy, uz, x_index):
     avg_uz = np.mean(uz[x_index, :, :], axis=1)
     return avg_ux, avg_uy, avg_uz
 
+def compute_fluctuations(ux, uy, uz, avg_ux, avg_uy, avg_uz, x_index):
+    """Compute the fluctuation components of velocity at a given x index."""
+    ux_fluct = ux[x_index, :, :] - avg_ux[:, np.newaxis]
+    uy_fluct = uy[x_index, :, :] - avg_uy[:, np.newaxis]
+    uz_fluct = uz[x_index, :, :] - avg_uz[:, np.newaxis]
+    return ux_fluct, uy_fluct, uz_fluct
+
 def compute_mix_layer_limits(avg_ux, y):
     """Compute the lower and upper limits of the mixing layer using min-max and gradient methods."""
     u_min = np.min(avg_ux)
@@ -83,7 +90,7 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
     color_shear = '#D55E00'  # reddish orange for shear stress
     color_thickness = '#CC79A7'  # pink for mixing layer limits
 
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(12, 9))
 
     # Plotting the average velocity profile for u_x
     plt.subplot(1, 3, 1)
@@ -142,7 +149,38 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
     plt.tight_layout()
     plt.show()
 
-# Example usage
+def plot_fluctuations(y, z, ux_fluct, uy_fluct, uz_fluct):
+    """Plot the velocity fluctuations in 3D at a given x index."""
+    Y, Z = np.meshgrid(y, z, indexing='ij')
+
+    fig = plt.figure(figsize=(18, 9))
+
+    # Plotting u_x' fluctuation
+    ax1 = fig.add_subplot(131, projection='3d')
+    ax1.plot_surface(ux_fluct, Z, Y, cmap='plasma', edgecolor='none')
+    ax1.set_title("Fluctuation $u_x'$")
+    ax1.set_xlabel("$u_x'$")
+    ax1.set_ylabel('z')
+
+    # Plotting u_y' fluctuation
+    ax2 = fig.add_subplot(132, projection='3d')
+    ax2.plot_surface(uy_fluct, Z, Y,  cmap='plasma', edgecolor='none')
+    ax2.set_title("Fluctuation $u_y'$")
+    ax2.set_xlabel("$u_y'$")
+    ax2.set_ylabel('z')
+
+    # Plotting u_z' fluctuation
+    ax3 = fig.add_subplot(133, projection='3d')
+    ax3.plot_surface(uz_fluct, Z, Y, cmap='plasma', edgecolor='none')
+    ax3.set_title("Fluctuation $u_z'$")
+    ax3.set_xlabel("$u_z'$")
+    ax3.set_ylabel('z')
+    ax3.set_zlabel('y')
+
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Read simulation fields from a binary file.')
     parser.add_argument('--filename', '-f', type=str, default='fields.bin',
@@ -153,6 +191,8 @@ if __name__ == "__main__":
                         help='Dynamic viscosity of the fluid (default is 1.0)')
     parser.add_argument('--shearstress', '-s', action='store_true',
                         help='Plot the shear stress on the velocity profile')
+    parser.add_argument('--fluctuations', '-fl', action='store_true',
+                        help='Plot the velocity fluctuations in 3D')
     args = parser.parse_args()
 
     # Read the fields
@@ -167,4 +207,9 @@ if __name__ == "__main__":
 
     # Plot the profiles
     plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, args.viscosity, args.shearstress)
+
+    # If requested, compute and plot fluctuations
+    if args.fluctuations:
+        ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(ux, uy, uz, avg_ux, avg_uy, avg_uz, args.x_index)
+        plot_fluctuations(y, z, ux_fluct, uy_fluct, uz_fluct)
 

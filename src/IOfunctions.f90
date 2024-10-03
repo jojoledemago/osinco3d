@@ -43,7 +43,8 @@ contains
          itscheme, dt, itstart, itstop, &
          u0, l0, re, typesim, omega, eps, kmax, &
          nfre, xpro, ypro, zpro, &
-         iin, inflow_noise, init_noise, ratio, &
+         iin, inflow_noise, &
+         init_noise_x, init_noise_y, init_noise_z, ratio, &
          iles, cs, idyn
     implicit none
 
@@ -154,8 +155,10 @@ contains
     write(*,*) "  Inflow noise intensity (inflow_noise):"
     write(*,float_format1) inflow_noise
     write(*,*) "  Initialization noise intensity (init_noise):"
-    write(*,float_format1) init_noise
-    write(*,*) "  Ratio (ratio):"
+    write(*,float_format1, advance="no") init_noise_x
+    write(*,float_format1, advance="no") init_noise_y
+    write(*,float_format1) init_noise_z
+    write(*,*) "  Ratio:"
     write(*,float_format1) ratio
     print *, ""
 

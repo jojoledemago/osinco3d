@@ -68,7 +68,7 @@ module initialization
   integer :: iin !> Inflow conditions (0: classic, 1: turbinit)
   real(kind=8) :: inflow_noise !> Turbulence intensity (1=100%) !! Inflow conditiona
   integer :: ici !> Initial conditions ((0: classic, 1: turbulent)
-  real(kind=8) :: init_noise !> Turbulence intensity (1=100%) !! Inflow condition
+  real(kind=8) :: init_noise_x, init_noise_y, init_noise_z !> Turbulence intensity (1=100%) !! Inflow condition
 
   ! Parameters for x and y BC
   integer, parameter :: PERIODIC = 0
@@ -121,7 +121,8 @@ contains
     namelist /PoissonEq/ omega, idyn, eps, kmax
     namelist /Scalar/ nscr, sc
     namelist /VisuParameters/ nfre, nsve, initstat, xpro, ypro, zpro
-    namelist /InitInflow/ iin, inflow_noise, ici, init_noise
+    namelist /InitInflow/ iin, inflow_noise, ici, &
+         init_noise_x, init_noise_y, init_noise_z
     namelist /LES/ iles, cs
 
     open(unit=10, file='parameters.o3d', status='old', action='read', iostat=io_status)

@@ -33,7 +33,8 @@ program osinco3d
   if (typesim > 0) then
      call set_initialization_type(typesim)
      call init_condition(ux, uy, uz, pp, phi, x, y, z, &
-          nx, ny, nz, l0, ratio, nscr, ici, init_noise)
+          nx, ny, nz, l0, ratio, nscr, ici, &
+          init_noise_x, init_noise_y, init_noise_z)
      time0 = 0.d0
   else
      call read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time0)
@@ -44,7 +45,7 @@ program osinco3d
   end if
   if (ici == 2 .or. ici == 3) then
      call add_turbulent_init(ux, uy, uz, &
-          nx, ny, nz, dy, u0, init_noise)
+          nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z)
   end if
   if (iin == 1) then
      call calcul_u_base(u_base, ux(1,:,kpro), dy)
@@ -100,7 +101,7 @@ program osinco3d
      time = time0 + itime * dt
      write(*,*) "========================"
      write(*,'(A12, I6, A1, I6)') "Iteration: ", itime, "/", itstop
-     write(*,'(A8, F10.3, A1, F6.0)') "TIME = ", time, "/", itstop * dt
+     write(*,'(A8, F10.3, A1, F6.0)') "TIME = ", time, "/", time0 + itstop * dt
      write(*,*) "========================"
      call old_values(ux, uy, uz, old_ux, old_uy, old_uz, nx, ny, nz)
      if (iin == 1) then

@@ -15,14 +15,14 @@ set size ratio -1 # Echelles orthonormees
 #set yrange[0:pi]
 set grid
 #set view 0,0 # Vue de dessus
-#set cbrange[0.5:1] # Etendue de la coloration
+#set cbrange[*:0.0001] # Etendue de la coloration
 set tics out # Tics vers l'exterieur
 #unset xtics # Pas de graduation selon z
 #unset ytics
 unset ztics
 splot 'outputs/solution_xy.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9))
-#splot 'outputs/solution_xy.dat' u 1:2:4
+#splot 'outputs/solution_xy.dat' u 1:2:3
 #splot 'outputs/solution_xz.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9))
-#splot 'outputs/solution_xz.dat' u 1:2:5
+#splot 'outputs/solution_xz.dat' u 1:2:4
 #splot 'outputs/solution_yz.dat' u 2:1:(sqrt($7*$7+$8*$8+$9*$9))
-#splot 'outputs/solution_yz.dat' u 2:1:12
+#splot 'outputs/solution_yz.dat' u 2:1:5

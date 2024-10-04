@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
+import sys
 
 def read_fields(filename):
     """Read fields from a binary file."""
@@ -40,14 +41,14 @@ def compute_fluctuations(ux, uy, uz, avg_ux, avg_uy, avg_uz, x_index):
     uz_fluct = uz[x_index, :, :] - avg_uz[:, np.newaxis]
     return ux_fluct, uy_fluct, uz_fluct
 
-def compute_mix_layer_limits(avg_ux, y):
+def compute_mix_layer_limits(avg_ux, y, min_max_threshold, gradient_threshold_factor):
     """Compute the lower and upper limits of the mixing layer using min-max and gradient methods."""
-    u_min = np.min(avg_ux)
-    u_max = np.max(avg_ux)
+    u_min = avg_ux[ 0]
+    u_max = avg_ux[-1]
     
     # Min-Max Method
-    target_low = 0.99 * u_min
-    target_high = 0.99 * u_max
+    target_low = min_max_threshold * u_min
+    target_high = min_max_threshold * u_max
     
     # Find indices for min-max method
     idx_low = np.where(avg_ux >= target_low)[0][0]  # First index where avg_ux >= target_low
@@ -58,7 +59,7 @@ def compute_mix_layer_limits(avg_ux, y):
     # Gradient Method
     du_dy = np.gradient(avg_ux, y)
     max_gradient = np.max(np.abs(du_dy))
-    gradient_threshold = 0.01 * max_gradient
+    gradient_threshold = gradient_threshold_factor * max_gradient
 
     # Find indices for gradient method
     idx_gradient = np.where(np.abs(du_dy) > gradient_threshold)[0]
@@ -70,7 +71,8 @@ def compute_mix_layer_limits(avg_ux, y):
 
     return (lower_limit_min_max, upper_limit_min_max), (lower_limit_gradient, upper_limit_gradient)
 
-def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stress):
+def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, 
+        plot_shear_stress, min_max_limits, gradient_limits, x, x_index):
     """Plot the average velocity profiles and their derivatives."""
     # Calculate the derivatives using np.gradient
     d_avg_ux = np.gradient(avg_ux, y)
@@ -80,9 +82,6 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
     # Calculate shear stress
     shear_stress = viscosity * d_avg_ux  # Assuming d_avg_ux is du/dy
 
-    # Calculate mixing layer limits
-    (lower_limit_min_max, upper_limit_min_max), (lower_limit_gradient, upper_limit_gradient) = compute_mix_layer_limits(avg_ux, y)
-
     # Define colors suitable for color-blind users
     color_ux = '#E69F00'  # orange
     color_uy = '#56B4E9'  # sky blue
@@ -91,6 +90,8 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
     color_thickness = '#CC79A7'  # pink for mixing layer limits
 
     plt.figure(figsize=(12, 9))
+    # Set the overall title for the figure, including x[x_index]
+    plt.suptitle(f'Velocity Profiles and Shear Stress for x = {x[x_index]:.2f}', fontsize=14)
 
     # Plotting the average velocity profile for u_x
     plt.subplot(1, 3, 1)
@@ -99,13 +100,19 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
         plt.plot(shear_stress, y, label='Shear Stress $\\tau$', color=color_shear, linestyle='--')
 
     # Plotting the limits of the mixing layer
-    plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':', label='Mixing Layer Lower Limit (Min-Max)')
+    lower_limit_min_max, upper_limit_min_max = min_max_limits
+    plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':', label='Mixing Layer Limit (Min-Max)')
     plt.axhline(y=upper_limit_min_max, color=color_thickness, linestyle=':')
+
+    lower_limit_gradient, upper_limit_gradient = gradient_limits
     if lower_limit_gradient is not None and upper_limit_gradient is not None:
-        plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.', label='Mixing Layer Lower Limit (Gradient)')
+        plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.', label='Mixing Layer Limit (Gradient)')
         plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
 
-    plt.title('Velocity Profile $\\langle u_x \\rangle$ and Shear Stress')
+    if plot_shear_stress:
+        plt.title('Velocity Profile $\\langle u_x \\rangle$ and Shear Stress')
+    else:
+        plt.title('Velocity Profile $\\langle u_x \\rangle$')
     plt.xlabel('Velocity ($u_x$) / Shear Stress ($\\tau$)')
     plt.ylabel('Height (y)')
     plt.ylim([min(y), max(y)])  # Set y-axis limits
@@ -116,12 +123,12 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
     plt.subplot(1, 3, 2)
     plt.plot(avg_uy, y, label='$\\langle u_y \\rangle$', color=color_uy, linestyle='--', linewidth=1.5)
     plt.plot(avg_uz, y, label='$\\langle u_z \\rangle$', color=color_uz, linestyle='-.', linewidth=1.5)
-    # Plotting the limits of the mixing layer
     plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':')
     plt.axhline(y=upper_limit_min_max, color=color_thickness, linestyle=':')
     if lower_limit_gradient is not None and upper_limit_gradient is not None:
         plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.')
         plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
+
     plt.title('Velocity Profiles $\\langle u_y \\rangle$ and $\\langle u_z \\rangle$')
     plt.xlabel('Velocity')
     plt.ylabel('Height (y)')
@@ -131,16 +138,17 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
 
     # Plotting the derivatives of the velocity profiles
     plt.subplot(1, 3, 3)
-    plt.plot(d_avg_ux, y, label='$\\frac{d(\\langle u_x \\rangle)}{dy}$', color=color_ux, linestyle='--', linewidth=1.5)
-    plt.plot(d_avg_uy, y, label='$\\frac{d(\\langle u_y \\rangle)}{dy}$', color=color_uy, linestyle='--', linewidth=1.5)
-    plt.plot(d_avg_uz, y, label='$\\frac{d(\\langle u_z \\rangle)}{dy}$', color=color_uz, linestyle='--', linewidth=1.5)
+    plt.plot(d_avg_ux, y, label='$d\\langle u_x \\rangle/dy$', color=color_ux)
+    plt.plot(d_avg_uy, y, label='$d\\langle u_y \\rangle/dy$', color=color_uy, linestyle='--', linewidth=1.5)
+    plt.plot(d_avg_uz, y, label='$d\\langle u_z \\rangle/dy$', color=color_uz, linestyle='-.', linewidth=1.5)
     plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':')
     plt.axhline(y=upper_limit_min_max, color=color_thickness, linestyle=':')
     if lower_limit_gradient is not None and upper_limit_gradient is not None:
         plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.')
         plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
-    plt.title('Derivatives of Velocity Profiles')
-    plt.xlabel('Derivative')
+
+    plt.title('Velocity Gradients')
+    plt.xlabel('Velocity Gradient')
     plt.ylabel('Height (y)')
     plt.ylim([min(y), max(y)])  # Set y-axis limits
     plt.grid()
@@ -149,67 +157,76 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, plot_shear_stre
     plt.tight_layout()
     plt.show()
 
-def plot_fluctuations(y, z, ux_fluct, uy_fluct, uz_fluct):
-    """Plot the velocity fluctuations in 3D at a given x index."""
+def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index):
+    """Plot the velocity fluctuations in 3D with a single colormap and shared colorbar."""
+    fig = plt.figure(figsize=(18, 6))
+    # Set the overall title for the figure, including x[x_index]
+    fig.suptitle(f'Velocity Fluctuations for x = {x[x_index]:.2f}', fontsize=14)
+
+    # Create a meshgrid for y and z
     Y, Z = np.meshgrid(y, z, indexing='ij')
 
-    fig = plt.figure(figsize=(18, 9))
+    # Find the global minimum and maximum values for the color scale
+    vmin = min(np.min(ux_fluct), np.min(uy_fluct), np.min(uz_fluct))
+    vmax = max(np.max(ux_fluct), np.max(uy_fluct), np.max(uz_fluct))
 
-    # Plotting u_x' fluctuation
+    # Fluctuations for u_x
     ax1 = fig.add_subplot(131, projection='3d')
-    ax1.plot_surface(ux_fluct, Z, Y, cmap='plasma', edgecolor='none')
-    ax1.set_title("Fluctuation $u_x'$")
-    ax1.set_xlabel("$u_x'$")
-    ax1.set_ylabel('z')
+    surf_ux = ax1.plot_surface(Y, Z, ux_fluct, cmap='viridis', vmin=vmin, vmax=vmax)
+    ax1.set_title("Fluctuations $u'_x$")
+    ax1.set_xlabel("Height (y)")
+    ax1.set_ylabel("Span (z)")
+    ax1.set_zlabel("Fluctuations $u'_x$")
 
-    # Plotting u_y' fluctuation
+    # Fluctuations for u_y
     ax2 = fig.add_subplot(132, projection='3d')
-    ax2.plot_surface(uy_fluct, Z, Y,  cmap='plasma', edgecolor='none')
-    ax2.set_title("Fluctuation $u_y'$")
-    ax2.set_xlabel("$u_y'$")
-    ax2.set_ylabel('z')
+    surf_uy = ax2.plot_surface(Y, Z, uy_fluct, cmap='viridis', vmin=vmin, vmax=vmax)
+    ax2.set_title("Fluctuations $u'_y$")
+    ax2.set_xlabel("Height (y)")
+    ax2.set_ylabel("Span (z)")
+    ax2.set_zlabel("Fluctuations $u'_y$")
 
-    # Plotting u_z' fluctuation
+    # Fluctuations for u_z
     ax3 = fig.add_subplot(133, projection='3d')
-    ax3.plot_surface(uz_fluct, Z, Y, cmap='plasma', edgecolor='none')
-    ax3.set_title("Fluctuation $u_z'$")
-    ax3.set_xlabel("$u_z'$")
-    ax3.set_ylabel('z')
-    ax3.set_zlabel('y')
+    surf_uz = ax3.plot_surface(Y, Z, uz_fluct, cmap='viridis', vmin=vmin, vmax=vmax)
+    ax3.set_title("Fluctuations $u'_z$")
+    ax3.set_xlabel("Height (y)")
+    ax3.set_ylabel("Span (z)")
+    ax3.set_zlabel("Fluctuations $u'_z$")
 
-    plt.tight_layout()
+    # Adjust layout manually instead of using tight_layout
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1, wspace=0.3)
+
     plt.show()
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Read simulation fields from a binary file.')
-    parser.add_argument('--filename', '-f', type=str, default='fields.bin',
-                        help='The path to the binary file to read')
-    parser.add_argument('--x_index', '-x', type=int, default=0,
-                        help='The x index for which to compute velocity profiles (default is 0)')
-    parser.add_argument('--viscosity', '-v', type=float, default=1.0,
-                        help='Dynamic viscosity of the fluid (default is 1.0)')
-    parser.add_argument('--shearstress', '-s', action='store_true',
-                        help='Plot the shear stress on the velocity profile')
-    parser.add_argument('--fluctuations', '-fl', action='store_true',
-                        help='Plot the velocity fluctuations in 3D')
+    parser = argparse.ArgumentParser(description="CFD post-processing script")
+    parser.add_argument("--filename", '-f', type=str, required=True, help="Input binary file containing the CFD data")
+    parser.add_argument("--x_index", '-x', type=int, default=0, help="Index in the x direction to calculate profiles")
+    parser.add_argument("--viscosity", '-v', type=float, default=0.89, help="Dynamic viscosity")
+    parser.add_argument("--shearstress", '-s', action='store_true', help="Include shear stress in the plots")
+    parser.add_argument("--fluctuations", '-fl', action='store_true', help="Include fluctuations in the plots")
+    parser.add_argument("--min_max_threshold", type=float, default=0.99, help="Threshold for min-max method (default=0.1)")
+    parser.add_argument("--gradient_threshold_factor", type=float, default=0.05, help="Threshold factor for gradient method (default=0.5)")
     args = parser.parse_args()
 
-    # Read the fields
+    # Read the data
     time, nx, ny, nz, x, y, z, ux, uy, uz, pp = read_fields(args.filename)
-
-    # Check index validity
-    if args.x_index < 0 or args.x_index >= nx:
-        raise ValueError(f"x_index ({args.x_index}) is out of bounds for nx ({nx}).")
 
     # Compute average velocity profiles
     avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, args.x_index)
 
-    # Plot the profiles
-    plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, args.viscosity, args.shearstress)
+    # Compute mixing layer limits
+    min_max_limits, gradient_limits = compute_mix_layer_limits(avg_ux, y, args.min_max_threshold, args.gradient_threshold_factor)
 
-    # If requested, compute and plot fluctuations
+    # Plot velocity profiles
+    plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, args.viscosity, args.shearstress, 
+            min_max_limits, gradient_limits, x, args.x_index)
+
+    # Plot fluctuations if required
     if args.fluctuations:
         ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(ux, uy, uz, avg_ux, avg_uy, avg_uz, args.x_index)
-        plot_fluctuations(y, z, ux_fluct, uy_fluct, uz_fluct)
-
+        plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, args.x_index)
+    
+    # End of execution
+    sys.exit(0)

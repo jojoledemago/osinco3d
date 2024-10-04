@@ -64,6 +64,7 @@ program osinco3d
   else 
      call visu(rotz(:,:,kpro), x, y, nx, ny, num)
   end if
+  call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, 0)
   call visualize_2d(x, y, nx, ny, &
        ux(:,:,kpro), uy(:,:,kpro), uz(:,:,kpro), pp(:,:,kpro), &
        rotx(:,:,kpro), roty(:,:,kpro), rotz(:,:,kpro), q_criterion(:,:,kpro), &

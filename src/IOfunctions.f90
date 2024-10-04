@@ -390,7 +390,7 @@ contains
     integer :: ios
 
     write(filename, '(A,I0.6,A)') "fields_", itime, ".bin"
-    print *, "* Save flow state in :", filename
+    print *, "* Save flow state in: ", filename
 
     open(unit=iunit, file=filename, status='replace', access='stream', &
          form='unformatted', action='write', iostat=ios)

@@ -3,10 +3,10 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 0  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
-re = 2200.
+re = 2500.
 ratio = -1.
 /End
 
@@ -54,7 +54,7 @@ itstop = 50000
 omega = 1.99 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
 idyn = 1
 eps = 1.e-5
-kmax = 1000
+kmax = 5000
 /End
 
 !<--------------->!
@@ -80,7 +80,7 @@ zpro = 0.0
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
-ici = 0  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
 init_noise_x = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
 init_noise_y = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
 init_noise_z = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition

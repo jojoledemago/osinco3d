@@ -72,7 +72,7 @@ def compute_mix_layer_limits(avg_ux, y, min_max_threshold, gradient_threshold_fa
     return (lower_limit_min_max, upper_limit_min_max), (lower_limit_gradient, upper_limit_gradient)
 
 def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, 
-        plot_shear_stress, min_max_limits, gradient_limits, x, x_index):
+        min_max_limits, gradient_limits, x, x_index, time):
     """Plot the average velocity profiles and their derivatives."""
     # Calculate the derivatives using np.gradient
     d_avg_ux = np.gradient(avg_ux, y)
@@ -91,13 +91,11 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
 
     plt.figure(figsize=(12, 9))
     # Set the overall title for the figure, including x[x_index]
-    plt.suptitle(f'Velocity Profiles and Shear Stress for x = {x[x_index]:.2f}', fontsize=14)
+    plt.suptitle(f'Velocity Profiles and Shear Stress for x = {x[x_index]:.2f} at time = {time:.0f}', fontsize=14)
 
     # Plotting the average velocity profile for u_x
     plt.subplot(1, 3, 1)
     plt.plot(avg_ux, y, label='$\\langle u_x \\rangle$', color=color_ux)
-    if plot_shear_stress:
-        plt.plot(shear_stress, y, label='Shear Stress $\\tau$', color=color_shear, linestyle='--')
 
     # Plotting the limits of the mixing layer
     lower_limit_min_max, upper_limit_min_max = min_max_limits
@@ -109,10 +107,7 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
         plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.', label='Mixing Layer Limit (Gradient)')
         plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
 
-    if plot_shear_stress:
-        plt.title('Velocity Profile $\\langle u_x \\rangle$ and Shear Stress')
-    else:
-        plt.title('Velocity Profile $\\langle u_x \\rangle$')
+    plt.title('Velocity Profile $\\langle u_x \\rangle$')
     plt.xlabel('Velocity ($u_x$) / Shear Stress ($\\tau$)')
     plt.ylabel('Height (y)')
     plt.ylim([min(y), max(y)])  # Set y-axis limits
@@ -157,11 +152,11 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
     plt.tight_layout()
     plt.show()
 
-def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index):
+def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time):
     """Plot the velocity fluctuations in 3D with a single colormap and shared colorbar."""
     fig = plt.figure(figsize=(18, 6))
     # Set the overall title for the figure, including x[x_index]
-    fig.suptitle(f'Velocity Fluctuations for x = {x[x_index]:.2f}', fontsize=14)
+    fig.suptitle(f'Velocity Fluctuations for x = {x[x_index]:.2f} at time = {time:.0f}', fontsize=14)
 
     # Create a meshgrid for y and z
     Y, Z = np.meshgrid(y, z, indexing='ij')
@@ -199,34 +194,45 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index):
 
     plt.show()
 
+def main(args):
+
+    nu = 1. / args.reynolds
+
+    for filename in args.filenames:
+        # Read the data
+        time, nx, ny, nz, x, y, z, ux, uy, uz, pp = read_fields(filename)
+
+        # Compute average velocity profiles
+        avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, args.x_index)
+
+        # Compute mixing layer limits
+        min_max_limits, gradient_limits = compute_mix_layer_limits(
+            avg_ux, y, args.min_max_threshold, args.gradient_threshold_factor)
+
+        # Plot velocity profiles
+        plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, nu, 
+                min_max_limits, gradient_limits, x, args.x_index, time)
+
+        # Plot fluctuations if required
+        if args.fluctuations:
+            ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(ux, uy, 
+                uz, avg_ux, avg_uy, avg_uz, args.x_index)
+            plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, args.x_index, time)
+
+    return 0
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CFD post-processing script")
-    parser.add_argument("--filename", '-f', type=str, required=True, help="Input binary file containing the CFD data")
+    parser.add_argument("--filenames", '-f', nargs='+', type=str, default=['fields_000000.bin'], help="List of input binary files containing the CFD data")
     parser.add_argument("--x_index", '-x', type=int, default=0, help="Index in the x direction to calculate profiles")
-    parser.add_argument("--viscosity", '-v', type=float, default=0.89, help="Dynamic viscosity")
-    parser.add_argument("--shearstress", '-s', action='store_true', help="Include shear stress in the plots")
+    parser.add_argument("--reynolds", '-re', type=float, default=1000., help="Reynolds")
     parser.add_argument("--fluctuations", '-fl', action='store_true', help="Include fluctuations in the plots")
     parser.add_argument("--min_max_threshold", type=float, default=0.99, help="Threshold for min-max method (default=0.1)")
     parser.add_argument("--gradient_threshold_factor", type=float, default=0.05, help="Threshold factor for gradient method (default=0.5)")
     args = parser.parse_args()
 
-    # Read the data
-    time, nx, ny, nz, x, y, z, ux, uy, uz, pp = read_fields(args.filename)
-
-    # Compute average velocity profiles
-    avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, args.x_index)
-
-    # Compute mixing layer limits
-    min_max_limits, gradient_limits = compute_mix_layer_limits(avg_ux, y, args.min_max_threshold, args.gradient_threshold_factor)
-
-    # Plot velocity profiles
-    plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, args.viscosity, args.shearstress, 
-            min_max_limits, gradient_limits, x, args.x_index)
-
-    # Plot fluctuations if required
-    if args.fluctuations:
-        ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(ux, uy, uz, avg_ux, avg_uy, avg_uz, args.x_index)
-        plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, args.x_index)
+    err = main(args)
     
     # End of execution
-    sys.exit(0)
+    sys.exit(err)

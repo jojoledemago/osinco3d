@@ -3,7 +3,7 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 5  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 0  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
 re = 2500.
@@ -45,7 +45,7 @@ itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
 dt = 0.002
 irestart = 0
 itstart = 1
-itstop = 50000
+itstop = 15000
 /End
 
 !<--------------->!
@@ -53,7 +53,7 @@ itstop = 50000
 !<--------------->!
 omega = 1.99 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
 idyn = 1
-eps = 1.e-5
+eps = 1.e-6
 kmax = 5000
 /End
 
@@ -67,9 +67,9 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 2000
-nsve = 5000
-initstat = 10 !> Time for beginng statistic save
+nfre = 500
+nsve = 1000
+initstat = 0 !> Time for beginng statistic save
 xpro = 2.75
 ypro = 0.0
 zpro = 0.0
@@ -80,10 +80,10 @@ zpro = 0.0
 !<--------------->!
 iin = 0  !> Inflow conditions (0: classic, 1: turbulent)
 inflow_noise = 0.01 !> Turbulence intensity !! Inflow condition
-ici = 3  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
-init_noise_x = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
-init_noise_y = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
-init_noise_z = 0.03 !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 0  !> Initial conditions (0: classic, 1: oscillations, 2: noise, 3: both)
+init_noise_x = 0.00 !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise_y = 0.00 !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise_z = 0.05 !> Turbulence intensity (1=100%) !! Intiale condition
 /End
 
 !<--------------->!

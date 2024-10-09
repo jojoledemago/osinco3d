@@ -3,38 +3,38 @@
 !<--------------->!
 &FlowParam
 !<--------------->!
-typesim = 0  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
+typesim = 2  !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer
 l0 = 1. 
 u0 = 1.
 re = 2500.
-ratio = -1.
+ratio = 1.
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 257
-ny = 513
-nz = 129
+nx = 257 
+ny = 257 
+nz = 257 
 
-xlx =  5.5
-yly = 11.0
-zlz =  2.75
+xlx = 3.141592653589793
+yly = 3.141592653589793
+zlz = 3.141592653589793
 
-x0 =  0. 
-y0 = -5.5
-z0 = -1.375
+x0 = 0.0 
+y0 = 0.0 
+z0 = 0.0 
 /End
 
 !<--------------->!
 &BoundaryConditions
 !<--------------->!
-nbcx1 = 0
-nbcxn = 0
+nbcx1 = 1
+nbcxn = 1
 nbcy1 = 1
 nbcyn = 1
-nbcz1 = 0
-nbczn = 0
+nbcz1 = 1
+nbczn = 1
 sim2d = 0
 /End
 
@@ -42,19 +42,19 @@ sim2d = 0
 &AdvanceTime
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-dt = 0.002
+dt = 0.0010
 irestart = 0
 itstart = 1
-itstop = 15000
+itstop = 22000
 /End
 
 !<--------------->!
 &PoissonEq
 !<--------------->!
-omega = 1.99 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
-idyn = 1
-eps = 1.e-6
-kmax = 5000
+omega = 1.926 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+idyn = 0
+eps = 1.e-5
+kmax = 10000
 /End
 
 !<--------------->!
@@ -68,11 +68,11 @@ sc = 1. !> Schmidt number
 &VisuParameters
 !<--------------->!
 nfre = 500
-nsve = 1000
+nsve = 2000
 initstat = 0 !> Time for beginng statistic save
-xpro = 2.75
-ypro = 0.0
-zpro = 0.0
+xpro = 1.5707963267948966 
+ypro = 1.5707963267948966 
+zpro = 1.5707963267948966 
 /End
 
 !<--------------->!

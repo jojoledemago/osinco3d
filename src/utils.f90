@@ -391,7 +391,7 @@ contains
 
     num_elements = n1 * n2 * n3
     element_size = 7.45d-9
-    num_enr = (itstop - itstart + 1) /  nfre
+    num_enr = (itstop - itstart + 1) /  nfre + 1
     datasize = real(num_elements, kind=8) * &
          element_size * real(num_var, kind=8) * real(num_enr, kind=8)
 

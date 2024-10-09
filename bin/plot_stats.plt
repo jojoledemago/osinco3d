@@ -27,11 +27,12 @@ set xlabel "t"
 set xlabel  font "" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse writeback
 set y2label "{/Symbol e}_t" 
+set format y2 "%g"
 set ylabel  font "" textcolor lt -1 rotate
 set ylabel "<U_i>^2 or E_k" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ * : * ] noreverse writeback
-set y2range [ * : * ] noreverse writeback
+set yrange [ 0 : 0.14 ] noreverse writeback
+set y2range [ 0 : 0.014 ] noreverse writeback
 set cblabel "" 
 set cblabel  font "" textcolor lt -1 rotate
 set cbrange [ * : * ] noreverse writeback

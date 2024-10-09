@@ -250,116 +250,91 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
         plt.show()
     plt.close()
 
-def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, epsilon, time, filename, png, num_bins=50, k_min_cutoff=1e-3):
+def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, 
+        epsilon, time, filename, png):
     """
-    Plot the energy spectrum of the velocity field, with band-averaged smoothing and correction for edge effects.
+    Plots the Kolmogorov energy spectrum for a 3D turbulent flow.
     
     Parameters:
-        ux, uy, uz : np.ndarray
-            Velocity components in 3D space.
-        x, y, z : np.ndarray
-            Spatial coordinates in the x, y, and z directions.
-        epsilon : float
-            Dissipation rate 
-        time : float
-            Time at which the spectrum is computed.
-        filename : str
-            Filename used for saving the plot.
-        png : bool
-            If True, saves the plot as a PNG file. Otherwise, shows the plot.
-        num_bins : int
-            Number of bands for the smoothing process (default is 50).
-        k_min_cutoff : float
-            Minimum value of k to include in the plot to avoid edge effects (default is 1e-3).
+    - ux, uy, uz: 3D arrays representing the velocity components of the flow.
+    - x, y, z: 1D arrays representing the spatial grid points in each direction.
+    - nx, ny, nz: Integers representing the number of grid points in x, y, and z directions.
+    - epsilon: Scalar, the turbulent dissipation rate.
+    - time: Scalar, the time at which the spectrum is plotted.
+    - filename: String, the name of the file associated with the data.
+    - png: Boolean, whether to save the figure as a PNG or display it.
+    
+    This function calculates the 3D Fourier transform of the velocity fields, computes the energy spectrum, 
+    reduces it to 1D based on the magnitude of the wave vector |k|, and then compares it to the theoretical 
+    Kolmogorov spectrum (k^(-5/3)).
     """
-    # Compute the 3D Fourier Transform of velocity components
-    ux_fft = np.fft.fftn(ux) / ((x[-1]-x[0])**2 * (y[-1]-y[0])**2 * (z[-1]-z[0])**2)
-    uy_fft = np.fft.fftn(uy) / ((x[-1]-x[0])**2 * (y[-1]-y[0])**2 * (z[-1]-z[0])**2) 
-    uz_fft = np.fft.fftn(uz) / ((x[-1]-x[0])**2 * (y[-1]-y[0])**2 * (z[-1]-z[0])**2) 
+
+    # Compute the 3D Fourier transform of the velocity fields and normalize by grid size
+    uxf = np.fft.fftn(ux) / (nx * ny * nz)
+    uyf = np.fft.fftn(uy) / (nx * ny * nz)
+    uzf = np.fft.fftn(uz) / (nx * ny * nz)
     
-    # Calculate the energy spectrum (sum of squares of the FFTs)
-    energy_spectrum = 0.5 * (np.abs(ux_fft)**2 + np.abs(uy_fft)**2 + np.abs(uz_fft)**2)
-
-    # Shift zero frequency to the center
-    energy_spectrum = np.fft.fftshift(energy_spectrum)
-
-    # Define wave numbers in each direction
-    dx = x[1] - x[0]  # Spacing in x-direction
-    dy = y[1] - y[0]  # Spacing in y-direction
-    dz = z[1] - z[0]  # Spacing in z-direction
+    # Spectral energy: E(k) = 0.5 * (|ûx(k)|² + |ûy(k)|² + |ûz(k)|²)
+    energy_spectrum = 0.5 * (np.abs(uxf)**2 + np.abs(uyf)**2 + np.abs(uzf)**2)
     
-    kx = np.fft.fftfreq(len(x), d=dx)
-    ky = np.fft.fftfreq(len(y), d=dy)
-    kz = np.fft.fftfreq(len(z), d=dz)
-
-    kx = np.fft.fftshift(kx)
-    ky = np.fft.fftshift(ky)
-    kz = np.fft.fftshift(kz)
-
-    # Create a meshgrid of wave numbers
+    # Wave numbers in 3D
+    dx = x[1] - x[0]
+    dy = y[1] - y[0]
+    dz = z[1] - z[0]
+    kx = np.fft.fftfreq(nx, d=dx) * 2 * np.pi
+    ky = np.fft.fftfreq(ny, d=dy) * 2 * np.pi
+    kz = np.fft.fftfreq(nz, d=dz) * 2 * np.pi
+    
+    # 3D wave number grids
     KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing='ij')
-    k_magnitude = np.sqrt(KX**2 + KY**2 + KZ**2)
-
-    # Flatten the arrays for easy manipulation
-    k_magnitude = k_magnitude.flatten()
-    energy_spectrum = energy_spectrum.flatten()
-
-    # Sort by wave number
-    sort_indices = np.argsort(k_magnitude)
-    k_magnitude = k_magnitude[sort_indices]
-    energy_spectrum = energy_spectrum[sort_indices]
-
-    # Filter out k = 0 and apply cutoff for small k values to avoid edge effects
-    non_zero_indices = (k_magnitude > k_min_cutoff)
-    k_magnitude = k_magnitude[non_zero_indices]
-    energy_spectrum = energy_spectrum[non_zero_indices]
-
-    # Bin the data to average the energy spectrum in bands of k
-    k_min = k_magnitude.min()
-    k_max = k_magnitude.max()
     
-    # Define logarithmic bins for the wave numbers
-    bins = np.logspace(np.log10(k_min), np.log10(k_max), num=num_bins)
+    # Magnitude of the wave vector |k|
+    k = np.sqrt(KX**2 + KY**2 + KZ**2)
     
-    # Initialize arrays for binned wave numbers and energy
-    binned_k = 0.5 * (bins[1:] + bins[:-1])  # Midpoints of the bins
-    binned_energy = np.zeros(len(binned_k))
+    # Convert 3D energy spectrum to 1D by averaging in spherical shells
+    k_bins = np.linspace(0, np.max(k), nx//2)
+    energy_bins = np.zeros(len(k_bins) - 1)
     
-    # Average energy spectrum in each bin
-    for i in range(len(bins) - 1):
-        in_bin = (k_magnitude >= bins[i]) & (k_magnitude < bins[i + 1])
-        if np.sum(in_bin) > 0:
-            binned_energy[i] = np.mean(energy_spectrum[in_bin])
-        else:
-            # If no points are in this bin, assign NaN to handle later
-            binned_energy[i] = np.nan
-
-    # Remove NaN values (empty bins)
-    valid_indices = ~np.isnan(binned_energy)
-    binned_k = binned_k[valid_indices]
-    binned_energy = binned_energy[valid_indices]
-
+    for i in range(len(k_bins) - 1):
+        mask = (k >= k_bins[i]) & (k < k_bins[i+1])
+        energy_bins[i] = np.sum(energy_spectrum[mask])
+    
+    # Center the k values for display
+    k_values = 0.5 * (k_bins[:-1] + k_bins[1:])
+    
+    # Kolmogorov constant (typically around 1.5)
+    kolmogorov_constant = 1.5
+    
     # Plotting the energy spectrum
     plt.figure(figsize=(10, 6))
-    plt.loglog(binned_k, binned_energy, label='Binned Energy Spectrum', color='b')
-
-    # Kolmogorov -5/3 scaling line for reference
-    kolmogorov_constant = 1.5  # Adjust as appropriate
-    plt.loglog(binned_k, kolmogorov_constant * binned_k**(-5/3) * epsilon ** (2/3), linestyle='--', color='r', label='$k^{-5/3}$ slope')
-    #plt.loglog(binned_k, np.exp(-2. * binned_k), linestyle='-', color='g', label='$e^{-2k}$ slope')
-
-    plt.xlabel('Wave number (k)')
-    plt.ylabel('Energy')
+    # Plot the Kolmogorov -5/3 slope
+    plt.loglog(k_values, kolmogorov_constant * k_values**(-5/3) * epsilon ** (2/3), 
+               linestyle='--', color='r', label='$k^{-5/3}$ slope')
+    
+    # Plot the calculated energy spectrum
+    plt.loglog(k_values, energy_bins, label='Energy spectrum')
+    
+    # Set limits for the y-axis: [1e-7, 1]
+    plt.ylim(1e-7, 1)
+    # Set specific ticks for the y-axis
+    plt.yticks([1e-6, 1e-4, 1e-2, 1e0])
+    
+    plt.xlabel('Wave number $k$')
+    plt.ylabel('Energy $E(k)$')
     plt.title(f'Kolmogorov Energy Spectrum at time = {time:.0f}')
     plt.grid(True, which="both", ls="--")
     plt.legend()
 
-    output_filename = f'./images/kolmogorov_spectrum_{os.path.basename(filename).replace(".bin", "")}.png'
+    output_dir = './images/'
+    output_filename = os.path.join(output_dir, f'kolmogorov_spectrum_{os.path.basename(filename).replace(".bin", "")}.png')
+    
     if png:
         plt.savefig(output_filename)
         print(f"Kolmogorov spectrum saved as {output_filename}")
     else:
         plt.show()
+    
+    # Close the plot to free memory
     plt.close()
 
 def set_axis_ticks(ax, fluct_data, axis='z', n=5, round_value=1):
@@ -444,7 +419,8 @@ def main(args):
             print(f"Dissipation rate epsilon = {epsilon:.4e}")
             print(f"Kolmogorov scale eta = {eta:.4e}")
             # Plot Kolmogorov energy spectrum
-            plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, epsilon, time, filename, args.png)
+            plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, 
+                    epsilon, time, filename, args.png)
 
     return 0
 

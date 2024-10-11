@@ -59,6 +59,8 @@ program osinco3d
        dx, dy, dz, nx, ny, nz, 1)
   divu_stats = function_stats(divu, nx, ny, nz)
   call print_divu_statistics(divu_stats, .false.)
+  call compute_cfl(cflx, cfly, cflz, ux, uy, uz, dx, dy, dz, dt)
+  call print_cfl(cflx, cfly, cflz)
   if (nscr == 1) then
      call visu(phi(:,:,kpro), x, y, nx, ny, num)
   else 

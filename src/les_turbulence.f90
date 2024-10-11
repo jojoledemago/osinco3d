@@ -200,11 +200,11 @@ contains
 
     integer :: nx, ny, nz
     real(kind=8), allocatable, dimension(:,:,:) :: &
-         dtauxx_dx, dtauxy_dx, dtauxz_dx
+        dtauxx_dx, dtauxy_dx, dtauxz_dx
     real(kind=8), allocatable, dimension(:,:,:) :: &
-         dtauxx_dy, dtauxy_dy, dtauxz_dy
+        dtauxy_dy, dtauyy_dy, dtauyz_dy
     real(kind=8), allocatable, dimension(:,:,:) :: &
-         dtauxx_dz, dtauxy_dz, dtauxz_dz
+        dtauxz_dz, dtauyz_dz, dtauzz_dz
 
     ! Get grid dimensions
     nx = size(tau_ij, 1)
@@ -212,34 +212,34 @@ contains
     nz = size(tau_ij, 3)
 
     ! Allocate arrays for partial derivatives
-    allocate(dtauxx_dx(nx,ny,nz), dtauxy_dx(nx,ny,nz), dtauxz_dx(nx,ny,nz))
-    allocate(dtauxx_dy(nx,ny,nz), dtauxy_dy(nx,ny,nz), dtauxz_dy(nx,ny,nz))
-    allocate(dtauxx_dz(nx,ny,nz), dtauxy_dz(nx,ny,nz), dtauxz_dz(nx,ny,nz))
+    allocate(dtauxx_dx(nx,ny,nz), dtauxy_dy(nx,ny,nz), dtauxz_dz(nx,ny,nz))
+    allocate(dtauxy_dx(nx,ny,nz), dtauyy_dy(nx,ny,nz), dtauyz_dz(nx,ny,nz))
+    allocate(dtauxz_dx(nx,ny,nz), dtauyz_dy(nx,ny,nz), dtauzz_dz(nx,ny,nz))
 
-    ! Compute derivatives in the x-direction
+    ! Compute derivatives in the x-component
     call derxp(dtauxx_dx, tau_ij(:,:,:,1), dx)
+    call deryp(dtauxy_dy, tau_ij(:,:,:,4), dy)
+    call derzp(dtauxz_dz, tau_ij(:,:,:,5), dz)
+
+    ! Compute derivatives in the y-component
     call derxp(dtauxy_dx, tau_ij(:,:,:,4), dx)
+    call deryp(dtauyy_dy, tau_ij(:,:,:,2), dy)
+    call derzp(dtauyz_dz, tau_ij(:,:,:,6), dz)
+
+    ! Compute derivatives in the z-component
     call derxp(dtauxz_dx, tau_ij(:,:,:,5), dx)
-
-    ! Compute derivatives in the y-direction
-    call deryp(dtauxx_dy, tau_ij(:,:,:,4), dy)
-    call deryp(dtauxy_dy, tau_ij(:,:,:,2), dy)
-    call deryp(dtauxz_dy, tau_ij(:,:,:,6), dy)
-
-    ! Compute derivatives in the z-direction
-    call derzp(dtauxx_dz, tau_ij(:,:,:,5), dz)
-    call derzp(dtauxy_dz, tau_ij(:,:,:,6), dz)
-    call derzp(dtauxz_dz, tau_ij(:,:,:,3), dz)
+    call deryp(dtauyz_dy, tau_ij(:,:,:,6), dy)
+    call derzp(dtauzz_dz, tau_ij(:,:,:,3), dz)
 
     ! Sum up contributions for each component
-    dtau_dx = dtauxx_dx + dtauxy_dx + dtauxz_dx  ! d(tau_ij)/dxj for x-component
-    dtau_dy = dtauxx_dy + dtauxy_dy + dtauxz_dy  ! d(tau_ij)/dyj for y-component
-    dtau_dz = dtauxx_dz + dtauxy_dz + dtauxz_dz  ! d(tau_ij)/dzj for z-component
+    dtau_dx = dtauxx_dx + dtauxy_dy + dtauxz_dz  ! d(tau_ij)/dxj for x-component
+    dtau_dy = dtauxy_dx + dtauyy_dy + dtauyz_dz  ! d(tau_ij)/dyj for y-component
+    dtau_dz = dtauxz_dx + dtauyz_dy + dtauzz_dz  ! d(tau_ij)/dzj for z-component
 
     ! Deallocate arrays
-    deallocate(dtauxx_dx, dtauxy_dx, dtauxz_dx)
-    deallocate(dtauxx_dy, dtauxy_dy, dtauxz_dy)
-    deallocate(dtauxx_dz, dtauxy_dz, dtauxz_dz)
+    deallocate(dtauxx_dx, dtauxy_dy, dtauxz_dz)
+    deallocate(dtauxy_dx, dtauyy_dy, dtauyz_dz)
+    deallocate(dtauxz_dx, dtauyz_dy, dtauzz_dz)
 
     return
   end subroutine calculate_dtau_ij_dxj

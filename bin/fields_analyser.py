@@ -219,7 +219,7 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
     ax1.set_xlabel("Height (y)")
     ax1.set_ylabel("Span (z)")
     ax1.set_zlabel("Fluctuations $u'_x$")
-    set_axis_ticks(ax1, ux_fluct, axis='z')
+    #set_axis_ticks(ax1, ux_fluct, axis='z')
 
     # Fluctuations for u_y
     ax2 = fig.add_subplot(132, projection='3d')
@@ -228,7 +228,7 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
     ax2.set_xlabel("Height (y)")
     ax2.set_ylabel("Span (z)")
     ax2.set_zlabel("Fluctuations $u'_y$")
-    set_axis_ticks(ax2, uy_fluct, axis='z')
+    #set_axis_ticks(ax2, uy_fluct, axis='z')
 
     # Fluctuations for u_z
     ax3 = fig.add_subplot(133, projection='3d')
@@ -237,7 +237,7 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
     ax3.set_xlabel("Height (y)")
     ax3.set_ylabel("Span (z)")
     ax3.set_zlabel("Fluctuations $u'_z$")
-    set_axis_ticks(ax3, uz_fluct, axis='z')
+    #set_axis_ticks(ax3, uz_fluct, axis='z')
 
     # Adjust layout manually instead of using tight_layout
     plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1, wspace=0.3)
@@ -292,12 +292,21 @@ def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz,
     k = np.sqrt(KX**2 + KY**2 + KZ**2)
     
     # Convert 3D energy spectrum to 1D by averaging in spherical shells
-    k_bins = np.linspace(0, np.max(k), nx//2)
+    #k_bins = np.linspace(0, np.max(k), nx//2)
+    #energy_bins = np.zeros(len(k_bins) - 1)
+    #
+    #for i in range(len(k_bins) - 1):
+    #    mask = (k >= k_bins[i]) & (k < k_bins[i+1])
+    #    energy_bins[i] = np.sum(energy_spectrum[mask])
+    k_bins = np.logspace(
+            np.log10(np.min(k[k > 0])), np.log10(np.max(k)), num=50)
     energy_bins = np.zeros(len(k_bins) - 1)
     
     for i in range(len(k_bins) - 1):
         mask = (k >= k_bins[i]) & (k < k_bins[i+1])
-        energy_bins[i] = np.sum(energy_spectrum[mask])
+        if np.sum(mask) > 0:
+            energy_bins[i] = np.mean(energy_spectrum[mask])
+
     
     # Center the k values for display
     k_values = 0.5 * (k_bins[:-1] + k_bins[1:])
@@ -315,9 +324,9 @@ def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz,
     plt.loglog(k_values, energy_bins, label='Energy spectrum')
     
     # Set limits for the y-axis: [1e-7, 1]
-    plt.ylim(1e-7, 1)
+    #plt.ylim(1e-7, 1)
     # Set specific ticks for the y-axis
-    plt.yticks([1e-6, 1e-4, 1e-2, 1e0])
+    #plt.yticks([1e-6, 1e-4, 1e-2, 1e0])
     
     plt.xlabel('Wave number $k$')
     plt.ylabel('Energy $E(k)$')
@@ -389,26 +398,30 @@ def main(args):
         time, nx, ny, nz, x, y, z, ux, uy, uz, pp = read_fields(filename)
 
         # Compute average velocity profiles
-        avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, args.x_index)
+        avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, 
+                args.x_index)
         
         if (args.mixing_layer):
             # Compute mixing layer limits
             min_max_limits, gradient_limits = compute_mix_layer_limits(
-                avg_ux, y, args.min_max_threshold, args.gradient_threshold_factor)
+                avg_ux, y, args.min_max_threshold, 
+                args.gradient_threshold_factor)
         else:
             min_max_limits = None
             gradient_limits = None
 
         # Plot velocity profiles
-        plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, nu, 
-                min_max_limits, gradient_limits, x, args.x_index, time,
-                filename, args.png)
+        if args.velocities:
+            plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, nu, 
+                    min_max_limits, gradient_limits, x, args.x_index, time,
+                    filename, args.png)
 
         # Plot fluctuations if required
         if args.fluctuations:
-            ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(ux, uy, 
-                uz, avg_ux, avg_uy, avg_uz, args.x_index)
-            plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, args.x_index, time, filename, args.png)
+            ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(
+                    ux, uy, uz, avg_ux, avg_uy, avg_uz, args.x_index)
+            plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, 
+                    args.x_index, time, filename, args.png)
 
         if args.kolmogorov:
             dx = x[1] - x[0]
@@ -425,22 +438,37 @@ def main(args):
     return 0
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CFD post-processing script", 
+    parser = argparse.ArgumentParser(description="CFD post-processing script",
             epilog="Example command: python3 fields_analyser.py fields_000000.bin fields_001000.bin fields_002000.bin -re 2500 -x 128 -fl -r")
-    default_filenames = glob.glob("fields_??????.bin")
-    parser.add_argument("--filenames", '-f', nargs='+', type=str, default=default_filenames, help="List of input binary files containing the CFD data")
-    parser.add_argument("--x_index", '-x', type=int, default=0, help="Index in the x direction to calculate profiles")
+    
+    default_filenames = glob.glob("fields_[0-9][0-9][0-9][0-9][0-9][0-9].bin")
+    default_filenames_sorted = sorted(default_filenames, key=lambda x: int(x.split('_')[1].split('.')[0]))
+    default_filenames = default_filenames_sorted
+    parser.add_argument("--filenames", '-f', nargs='+', type=str, default=default_filenames,
+                        help="List of input binary files containing the CFD data")
+    parser.add_argument("--x_index", '-xi', type=int, default=0, help="Index in the x direction to calculate profiles")
     parser.add_argument("--reynolds", '-re', type=float, default=1000., help="Reynolds number (nu=1/re)")
+    
+    # Ajout des arguments booléens
+    parser.add_argument("--velocities", '-v', action='store_true', help="Include velocities in the plots")
     parser.add_argument("--fluctuations", '-fl', action='store_true', help="Include fluctuations in the plots")
     parser.add_argument("--kolmogorov", '-k', action='store_true', help="Include Kolmogorov scale process and plot")
-    parser.add_argument("--mixing_layer", '-ml', action='store_true', help="Compute and plot mixing layer imits")
+    parser.add_argument("--mixing_layer", '-ml', action='store_true', help="Compute and plot mixing layer limits")
+    
     parser.add_argument("--min_max_threshold", type=float, default=0.99, help="Threshold for min-max method (default=0.1)")
     parser.add_argument("--gradient_threshold_factor", type=float, default=0.05, help="Threshold factor for gradient method (default=0.5)")
     parser.add_argument("--remove", '-r', action='store_true', help='Remove existing images')
     parser.add_argument('-png', action='store_true', help='Generate PNG plots in ./images directory')
+
+    # Analyse des arguments
     args = parser.parse_args()
 
+    # Vérification de la condition
+    if not (args.velocities or args.fluctuations or args.kolmogorov):
+        parser.error("At least one of the arguments --velocities (-v), --fluctuations (-fl), or --kolmogorov (-k) must be specified.")
+
+    # Appel de la fonction principale
     err = main(args)
-    
-    # End of execution
+
+    # Fin d'exécution
     sys.exit(err)

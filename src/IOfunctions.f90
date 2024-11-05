@@ -409,7 +409,7 @@ contains
 
   end subroutine save_fields
 
-  subroutine read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time)
+  subroutine read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, filename)
     !> Read the flow state from a binary file to restart the simulation
     !> INPUT
     !> nx      : number of grid points in x-direction
@@ -423,6 +423,7 @@ contains
     !> uz      : array of velocity components in z-direction
     !> pp      : array of pressure values
     !> time    : time from the beginning of the simulation
+    !> filename: name of binary fields file
     !>
     !> OUTPUT
     !> x       : array of coordinates in x-direction read from file
@@ -435,12 +436,12 @@ contains
     !> time    : simulation time read from file
 
     integer, intent(in) :: nx, ny, nz
+    character(len=10), intent(in) :: filename
     real(kind=8), intent(inout) :: x(nx), y(ny), z(nz)
     real(kind=8), intent(inout) :: ux(nx, ny, nz), uy(nx, ny, nz)
     real(kind=8), intent(inout) :: uz(nx, ny, nz), pp(nx, ny, nz)
     real(kind=8), intent(inout) :: time
 
-    character(len=10), parameter :: filename = "fields.bin"
     integer, parameter :: iunit = 102
     integer :: ios, nx_r, ny_r, nz_r
 
@@ -632,5 +633,29 @@ contains
 
     return
   end subroutine print_noise_gene
+
+  subroutine get_filename(filename)
+    ! Argument
+    character(30), intent(inout) :: filename  ! Output filename
+
+    ! Local variables
+    integer :: num_args  ! Number of command-line arguments
+
+    ! Get the number of command-line arguments
+    num_args = COMMAND_ARGUMENT_COUNT()
+
+    ! If an argument is provided, use it as the filename
+    if (num_args >= 1) then
+       call GET_COMMAND_ARGUMENT(1, filename)
+    else
+       ! Default filename if no argument is provided
+       filename = "fields.bin"
+    end if
+
+    ! Print the selected filename for verification
+    print *, "Simulation file used: ", trim(filename)
+
+  end subroutine get_filename
+
 end module IOfunctions
 

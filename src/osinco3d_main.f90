@@ -37,7 +37,8 @@ program osinco3d
           init_noise_x, init_noise_y, init_noise_z)
      time0 = 0.d0
   else
-     call read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time0)
+     call get_filename(fields_name_file)
+     call read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time0, fields_name_file)
      phi = 0.d0
   end if
   if (nbcx1 == INFLOW_OUTFLOW) then
@@ -88,10 +89,6 @@ program osinco3d
   call write_all_data(ux, uy, uz, rotx, roty, rotz, &
        q_criterion, pp, phi, nu_t, numx, nscr, iles)
   call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles)
-  if (initstat < 1.d-100) then
-     call statistics_calc(ux, uy, uz, nx, ny, nz, &
-          dx, dy, dz, re, 0.d0)
-  end if
   print *, ""
   print *, "Do you want to start the loop? (yes/no)"
   read(*, '(A3)') response

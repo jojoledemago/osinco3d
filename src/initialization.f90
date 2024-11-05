@@ -8,7 +8,9 @@ module initialization
 
   real(kind=8) :: divu_stats(6), datasize
   character(len=10) :: response
+  character(len=30) :: fields_name_file
   ! Domain definition variables
+
   integer :: nx, ny, nz           !> Grid points in the x, y, and z directions
   real(kind=8) :: xlx, yly, zlz   !> Physical dimensions of the domain in x, y, and z directions
   real(kind=8) :: x0, y0, z0      !> Origin of the x, y and z direction

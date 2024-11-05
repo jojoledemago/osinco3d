@@ -74,6 +74,47 @@ def compute_mix_layer_limits(avg_ux, y, min_max_threshold, gradient_threshold_fa
 
     return (lower_limit_min_max, upper_limit_min_max), (lower_limit_gradient, upper_limit_gradient)
 
+def compute_jet_limits(avg_ux, y, threshold=0.01):
+    """
+    Computes the jet limits based on a relative velocity threshold.
+
+    Parameters:
+    - x : Array of x (or y) coordinates perpendicular to the flow direction
+    - u : Velocity values at each point along the x axis
+    - threshold : Percentage of the maximum velocity used to define the jet thickness.
+
+    Returns:
+    - jet_min, jet_max : Positions corresponding to the limits of the jet.
+    """
+    u_max = np.max(avg_ux)
+    u_threshold = threshold * u_max  # For example, 10% of u_max
+
+    # Find the indices where the velocity is greater than or equal to the threshold
+    jet_region = np.where(avg_ux >= u_threshold)[0]
+
+    if len(jet_region) == 0:
+        return None, None  # No jet detected
+
+    jet_min = y[jet_region[0]]
+    jet_max = y[jet_region[-1]]
+
+    return jet_min, jet_max
+
+def compute_tke(ux, uy, uz):
+    u_mean = np.mean(ux)
+    v_mean = np.mean(uy)
+    w_mean = np.mean(uz)
+
+    u_prime = ux - u_mean
+    v_prime = uy - v_mean
+    w_prime = uz - w_mean
+
+    # Compute turbulent kinetic energy
+    tke = 0.5 * (np.mean(u_prime**2) + 
+            np.mean(v_prime**2) + np.mean(w_prime**2))
+    
+    return tke
+
 def compute_dissipation_rate(ux, uy, uz, dx, dy, dz):
     """
     Estimer le taux de dissipation d'énergie à partir des gradients des vitesses.
@@ -113,7 +154,7 @@ def compute_kolmogorov_scales(epsilon, viscosity):
     return eta, tau_eta, v_eta
 
 def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, 
-        min_max_limits, gradient_limits, x, x_index, time,
+        min_max_limits, gradient_limits, jet_limits, x, x_index, time,
         filename, png):
     """Plot the average velocity profiles and their derivatives."""
     # Calculate the derivatives using np.gradient
@@ -129,7 +170,7 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
 
     plt.figure(figsize=(12, 9))
     # Set the overall title for the figure, including x[x_index]
-    plt.suptitle(f'Velocity Profiles for x = {x[x_index]:.2f} at time = {time:.0f}', fontsize=14)
+    plt.suptitle(f'Velocity Profiles for x = {x[x_index]:.2f} at time = {time:.1f}', fontsize=14)
 
     # Plotting the average velocity profile for u_x
     plt.subplot(1, 3, 1)
@@ -145,6 +186,13 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
         if lower_limit_gradient is not None and upper_limit_gradient is not None:
             plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.', label='Mixing Layer Limit (Gradient)')
             plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
+
+    if jet_limits is not None:
+        jet_min, jet_max = jet_limits
+        plt.axhline(jet_min, color='b', linestyle=':', 
+                label='Jet limit (Min-Max)')
+        plt.axhline(jet_max, color='b', linestyle=':')
+
 
     plt.title('Velocity Profile $\\langle u_x \\rangle$')
     plt.xlabel('Velocity ($u_x$)')
@@ -164,6 +212,11 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
             plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.')
             plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
 
+    if jet_limits is not None:
+        jet_min, jet_max = jet_limits
+        plt.axhline(jet_min, color='b', linestyle=':')
+        plt.axhline(jet_max, color='b', linestyle=':')
+
     plt.title('Velocity Profiles $\\langle u_y \\rangle$ and $\\langle u_z \\rangle$')
     plt.xlabel('Velocity')
     plt.ylabel('Height (y)')
@@ -182,6 +235,11 @@ def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity,
         if lower_limit_gradient is not None and upper_limit_gradient is not None:
             plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.')
             plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
+
+    if jet_limits is not None:
+        jet_min, jet_max = jet_limits
+        plt.axhline(jet_min, color='b', linestyle=':')
+        plt.axhline(jet_max, color='b', linestyle=':')
 
     plt.title('Velocity Gradients')
     plt.xlabel('Velocity Gradient')
@@ -203,7 +261,7 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
     """Plot the velocity fluctuations in 3D with a single colormap and shared colorbar."""
     fig = plt.figure(figsize=(18, 6))
     # Set the overall title for the figure, including x[x_index]
-    fig.suptitle(f'Velocity Fluctuations for x = {x[x_index]:.2f} at time = {time:.0f}', fontsize=14)
+    fig.suptitle(f'Velocity Fluctuations for x = {x[x_index]:.2f} at time = {time:.1f}', fontsize=14)
 
     # Create a meshgrid for y and z
     Y, Z = np.meshgrid(y, z, indexing='ij')
@@ -253,84 +311,83 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
 def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, 
         epsilon, time, filename, png):
     """
-    Plots the Kolmogorov energy spectrum for a 3D turbulent flow.
-    
+    Calculate and plot the Kolmogorov energy spectrum for a turbulent flow.
+
     Parameters:
-    - ux, uy, uz: 3D arrays representing the velocity components of the flow.
-    - x, y, z: 1D arrays representing the spatial grid points in each direction.
-    - nx, ny, nz: Integers representing the number of grid points in x, y, and z directions.
-    - epsilon: Scalar, the turbulent dissipation rate.
-    - time: Scalar, the time at which the spectrum is plotted.
-    - filename: String, the name of the file associated with the data.
-    - png: Boolean, whether to save the figure as a PNG or display it.
+    -----------
+    ux, uy, uz : 3D numpy arrays
+        The velocity components of the flow in x, y, and z directions.
+    x, y, z : 1D numpy arrays
+        The spatial grid points in each direction (x, y, z).
+    nx, ny, nz : int
+        The number of grid points in x, y, and z directions.
+    epsilon : float
+        The turbulent dissipation rate.
     
-    This function calculates the 3D Fourier transform of the velocity fields, computes the energy spectrum, 
-    reduces it to 1D based on the magnitude of the wave vector |k|, and then compares it to the theoretical 
-    Kolmogorov spectrum (k^(-5/3)).
+    Returns:
+    --------
+    None
+        Displays a log-log plot of the energy spectrum and the Kolmogorov -5/3 slope.
     """
 
-    # Compute the 3D Fourier transform of the velocity fields and normalize by grid size
-    uxf = np.fft.fftn(ux) / (nx * ny * nz)
-    uyf = np.fft.fftn(uy) / (nx * ny * nz)
-    uzf = np.fft.fftn(uz) / (nx * ny * nz)
+    # Calculate the size of the domain in x, y, and z directions
+    Lx = x[-1] - x[0]
+    Ly = y[-1] - y[0]
+    Lz = z[-1] - z[0]
     
-    # Spectral energy: E(k) = 0.5 * (|ûx(k)|² + |ûy(k)|² + |ûz(k)|²)
-    energy_spectrum = 0.5 * (np.abs(uxf)**2 + np.abs(uyf)**2 + np.abs(uzf)**2)
-    
-    # Wave numbers in 3D
-    dx = x[1] - x[0]
-    dy = y[1] - y[0]
-    dz = z[1] - z[0]
+    # Compute the grid spacing in each direction
+    dx = Lx / (nx - 1)
+    dy = Ly / (ny - 1)
+    dz = Lz / (nz - 1)
+
+    # Get spatial frequencies (wavenumbers) for each direction
     kx = np.fft.fftfreq(nx, d=dx) * 2 * np.pi
     ky = np.fft.fftfreq(ny, d=dy) * 2 * np.pi
     kz = np.fft.fftfreq(nz, d=dz) * 2 * np.pi
     
-    # 3D wave number grids
+    # Create a 3D grid of wavenumbers
     KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing='ij')
+    k_magnitude = np.sqrt(KX**2 + KY**2 + KZ**2)  # Magnitude of the wavenumber vector
     
-    # Magnitude of the wave vector |k|
-    k = np.sqrt(KX**2 + KY**2 + KZ**2)
+    # Perform the Fourier transform on each velocity component
+    u_hat = np.fft.fftn(ux) / (nx*ny*nz)
+    v_hat = np.fft.fftn(uy) / (nx*ny*nz)
+    w_hat = np.fft.fftn(uz) / (nx*ny*nz)
     
-    # Convert 3D energy spectrum to 1D by averaging in spherical shells
-    #k_bins = np.linspace(0, np.max(k), nx//2)
-    #energy_bins = np.zeros(len(k_bins) - 1)
-    #
-    #for i in range(len(k_bins) - 1):
-    #    mask = (k >= k_bins[i]) & (k < k_bins[i+1])
-    #    energy_bins[i] = np.sum(energy_spectrum[mask])
-    k_bins = np.logspace(
-            np.log10(np.min(k[k > 0])), np.log10(np.max(k)), num=50)
-    energy_bins = np.zeros(len(k_bins) - 1)
+    # Compute the energy spectrum: E(k) = 1/2 * (|u_hat|^2 + |v_hat|^2 + |w_hat|^2)
+    energy_spectrum_3d = 0.5 * (np.abs(u_hat)**2 + np.abs(v_hat)**2 + np.abs(w_hat)**2)
     
-    for i in range(len(k_bins) - 1):
-        mask = (k >= k_bins[i]) & (k < k_bins[i+1])
-        if np.sum(mask) > 0:
-            energy_bins[i] = np.mean(energy_spectrum[mask])
+    # Convert the 3D spectrum to a 1D spectrum using spherical averaging
+    k_bins = np.linspace(0, np.max(k_magnitude), 50)  # Define bins for wavenumbers
+    E_k = np.zeros_like(k_bins[:-1])  # Initialize array to store averaged energy per bin
 
+    # Average the energy spectrum in each wavenumber bin
+    for i in range(len(k_bins) - 1):
+        k_min = k_bins[i]
+        k_max = k_bins[i+1]
+        
+        # Select indices where the magnitude of k is within the bin range
+        indices = (k_magnitude >= k_min) & (k_magnitude < k_max)
+        
+        # Compute the mean energy in this bin
+        E_k[i] = np.mean(energy_spectrum_3d[indices])
     
-    # Center the k values for display
-    k_values = 0.5 * (k_bins[:-1] + k_bins[1:])
-    
-    # Kolmogorov constant (typically around 1.5)
-    kolmogorov_constant = 1.5
-    
-    # Plotting the energy spectrum
-    plt.figure(figsize=(10, 6))
-    # Plot the Kolmogorov -5/3 slope
-    plt.loglog(k_values, kolmogorov_constant * k_values**(-5/3) * epsilon ** (2/3), 
-               linestyle='--', color='r', label='$k^{-5/3}$ slope')
-    
-    # Plot the calculated energy spectrum
-    plt.loglog(k_values, energy_bins, label='Energy spectrum')
-    
-    # Set limits for the y-axis: [1e-7, 1]
-    #plt.ylim(1e-7, 1)
-    # Set specific ticks for the y-axis
-    #plt.yticks([1e-6, 1e-4, 1e-2, 1e0])
-    
+    # Plot the energy spectrum
+    k_mid = 0.5 * (k_bins[:-1] + k_bins[1:])  # Midpoint of the wavenumber bins
+
+    plt.figure(figsize=(8, 6))
+    plt.loglog(k_mid, E_k, label='Energy spectrum', color='b')
+
+    # Plot the Kolmogorov -5/3 law (E(k) ~ k^(-5/3))
+    kolmogorov_slope = k_mid**(-5/3)
+    kolmogorov_slope *= (E_k[1] / kolmogorov_slope[1])  # Normalize the curve for visualization
+    plt.loglog(k_mid, kolmogorov_slope, 'r--', label=r'Kolmogorov $k^{-5/3}$ law')
+
+
+    # Plot settings    
     plt.xlabel('Wave number $k$')
     plt.ylabel('Energy $E(k)$')
-    plt.title(f'Kolmogorov Energy Spectrum at time = {time:.0f}')
+    plt.title(f'Kolmogorov Energy Spectrum at time = {time:.1f}')
     plt.grid(True, which="both", ls="--")
     plt.legend()
 
@@ -400,6 +457,10 @@ def main(args):
         # Compute average velocity profiles
         avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, 
                 args.x_index)
+        # Compute turbulent kinetic energy
+        tke = compute_tke(ux, uy, uz)
+
+        print(f'TKE for time = {time:.3f}: {tke:.6f}')
         
         if (args.mixing_layer):
             # Compute mixing layer limits
@@ -410,10 +471,16 @@ def main(args):
             min_max_limits = None
             gradient_limits = None
 
+            # Compute jet limits if requested
+        if args.jet:
+            jet_limits = compute_jet_limits(avg_ux, y)
+        else:
+            jet_limits = None
+
         # Plot velocity profiles
         if args.velocities:
             plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, nu, 
-                    min_max_limits, gradient_limits, x, args.x_index, time,
+                    min_max_limits, gradient_limits, jet_limits, x, args.x_index, time,
                     filename, args.png)
 
         # Plot fluctuations if required
@@ -454,6 +521,7 @@ if __name__ == "__main__":
     parser.add_argument("--fluctuations", '-fl', action='store_true', help="Include fluctuations in the plots")
     parser.add_argument("--kolmogorov", '-k', action='store_true', help="Include Kolmogorov scale process and plot")
     parser.add_argument("--mixing_layer", '-ml', action='store_true', help="Compute and plot mixing layer limits")
+    parser.add_argument("--jet", '-j', action='store_true', help="Compute and plot jet limits")
     
     parser.add_argument("--min_max_threshold", type=float, default=0.99, help="Threshold for min-max method (default=0.1)")
     parser.add_argument("--gradient_threshold_factor", type=float, default=0.05, help="Threshold factor for gradient method (default=0.5)")

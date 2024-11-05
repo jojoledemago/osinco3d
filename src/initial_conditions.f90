@@ -170,7 +170,7 @@ contains
   subroutine initialize_planar_jet(ux, uy, uz, pp, phi, &
        x, y, z, nx, ny, nz, l0, ratio, nscr, ici, &
        init_noise_x, init_noise_y, init_noise_z)
-    !> Initialize the flow field for a coplanar jet.
+    !> Initialize the flow field for a planar jet.
     !> This subroutine sets the velocity field (ux, uy, uz) for multiple jets
     !> that are coplanar, allowing for the simulation of interactions between
     !> the jets.
@@ -339,7 +339,7 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = init_noise_y * u0
+       A = 0.03 * u0
        ky = 3
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)
@@ -422,8 +422,8 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = 0.05 * u0
-       kx = 5
+       A = init_noise_y * u0
+       kx = 3
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)
        do k = 1, nz

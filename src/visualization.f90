@@ -215,7 +215,7 @@ contains
     call system('gnuplot visu.plt')
     write(suffixe,'(i4)') num+1000
     call system('mv tampon.jpeg images/image'//suffixe(1:4)//'.jpeg')
-    !call system('rm tampon.dat')
+    call system('rm tampon.dat')
     num=num+1
 
     return

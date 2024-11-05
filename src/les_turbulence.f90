@@ -200,11 +200,11 @@ contains
 
     integer :: nx, ny, nz
     real(kind=8), allocatable, dimension(:,:,:) :: &
-        dtauxx_dx, dtauxy_dx, dtauxz_dx
+         dtauxx_dx, dtauxy_dx, dtauxz_dx
     real(kind=8), allocatable, dimension(:,:,:) :: &
-        dtauxy_dy, dtauyy_dy, dtauyz_dy
+         dtauxy_dy, dtauyy_dy, dtauyz_dy
     real(kind=8), allocatable, dimension(:,:,:) :: &
-        dtauxz_dz, dtauyz_dz, dtauzz_dz
+         dtauxz_dz, dtauyz_dz, dtauzz_dz
 
     ! Get grid dimensions
     nx = size(tau_ij, 1)

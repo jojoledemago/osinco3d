@@ -23,6 +23,6 @@ unset ztics
 splot 'outputs/solution_xy.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9))
 #splot 'outputs/solution_xy.dat' u 1:2:11
 #splot 'outputs/solution_xz.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9))
-#splot 'outputs/solution_xz.dat' u 1:2:4
+#splot 'outputs/solution_xz.dat' u 1:2:11
 #splot 'outputs/solution_yz.dat' u 2:1:(sqrt($7*$7+$8*$8+$9*$9))
-#splot 'outputs/solution_yz.dat' u 2:1:5
+#splot 'outputs/solution_yz.dat' u 2:1:11

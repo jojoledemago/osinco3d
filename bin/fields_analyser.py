@@ -100,6 +100,53 @@ def compute_jet_limits(avg_ux, y, threshold=0.01):
 
     return jet_min, jet_max
 
+def compute_nu_t(ux, uy, uz, dx, dy, dz, Cs=0.1):
+    """
+    Calculate the turbulent viscosity nu_t for a Smagorinsky model.
+
+    Parameters:
+    -----------
+    ux, uy, uz : 3D numpy arrays
+        Velocity components.
+    dx, dy, dz : floats
+        Grid size in each direction.
+    Cs : float
+        Smagorinsky constant (default is 0.1).
+
+    Returns:
+    --------
+    nu_t : 2D numpy array
+        Turbulent viscosity for a constant x-plane.
+    """
+
+    # Local mesh size Δ = (dx * dy * dz)^(1/3)
+    delta = (dx * dy * dz)**(1/3)
+
+    # Calculate the derivatives of velocity components
+    dux_dy = np.gradient(ux, dy, axis=1, edge_order=2)
+    dux_dz = np.gradient(ux, dz, axis=2, edge_order=2)
+    duy_dx = np.gradient(uy, dx, axis=0, edge_order=2)
+    duy_dz = np.gradient(uy, dz, axis=2, edge_order=2)
+    duz_dx = np.gradient(uz, dx, axis=0, edge_order=2)
+    duz_dy = np.gradient(uz, dy, axis=1, edge_order=2)
+
+    # Calculate the strain rate tensor Sij
+    S11 = np.gradient(ux, dx, axis=0, edge_order=2)
+    S22 = np.gradient(uy, dy, axis=1, edge_order=2)
+    S33 = np.gradient(uz, dz, axis=2, edge_order=2)
+
+    S12 = 0.5 * (dux_dy + duy_dx)
+    S13 = 0.5 * (dux_dz + duz_dx)
+    S23 = 0.5 * (duy_dz + duz_dy)
+
+    # Magnitude of the strain rate tensor |S|
+    S_mag = np.sqrt(2 * (S11**2 + S22**2 + S33**2 + 2 * (S12**2 + S13**2 + S23**2)))
+
+    # Calculate turbulent viscosity nu_t
+    nu_t = (Cs * delta)**2 * S_mag
+
+    return nu_t
+
 def compute_tke(ux, uy, uz):
     u_mean = np.mean(ux)
     v_mean = np.mean(uy)
@@ -308,8 +355,46 @@ def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, file
         plt.show()
     plt.close()
 
-def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, 
-        epsilon, time, filename, png):
+def plot_nu_t(nu_t, y, z, x, x_index, time, filename, png):
+    """
+    Plot the turbulent viscosity nu_t for a constant x-plane.
+
+    Parameters:
+    -----------
+    nu_t : 2D numpy array
+        Turbulent viscosity in the y-z plane.
+    y, z : 1D numpy arrays
+        Coordinates in the y and z directions.
+    x : 1D numpy array
+        Coordinates in the x direction.
+    x_index : int
+        Index in the x direction.
+    time : float
+        Simulation time.
+    filename : str
+        Data file name.
+    png : bool
+        If True, saves the image as a PNG file.
+    """
+
+    plt.figure(figsize=(8, 6))
+    Y, Z = np.meshgrid(y, z, indexing='ij')
+    plt.contourf(Z, Y, nu_t, levels=20, cmap='viridis')
+    plt.colorbar(label='Turbulent Viscosity $\\nu_t$')
+
+    plt.title(f'Turbulent Viscosity $\\nu_t$ for x = {x[x_index]:.2f} at t = {time:.2f}')
+    plt.xlabel('z')
+    plt.ylabel('y')
+
+    output_filename = f'./images/nu_t_{os.path.basename(filename).replace(".bin", "")}_x_{x_index}.png'
+    if png:
+        plt.savefig(output_filename)
+        print(f"Turbulent viscosity plot saved as {output_filename}")
+    else:
+        plt.show()
+    plt.close()
+
+def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, epsilon, time, filename, png, eta):
     """
     Calculate and plot the Kolmogorov energy spectrum for a turbulent flow.
 
@@ -323,6 +408,7 @@ def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz,
         The number of grid points in x, y, and z directions.
     epsilon : float
         The turbulent dissipation rate.
+    nu: dynamique viscosity
     
     Returns:
     --------
@@ -360,6 +446,7 @@ def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz,
     # Convert the 3D spectrum to a 1D spectrum using spherical averaging
     k_bins = np.linspace(0, np.max(k_magnitude), 50)  # Define bins for wavenumbers
     E_k = np.zeros_like(k_bins[:-1])  # Initialize array to store averaged energy per bin
+    counts = np.zeros_like(E_k)  # To count how many points contribute to each bin
 
     # Average the energy spectrum in each wavenumber bin
     for i in range(len(k_bins) - 1):
@@ -370,11 +457,20 @@ def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz,
         indices = (k_magnitude >= k_min) & (k_magnitude < k_max)
         
         # Compute the mean energy in this bin
-        E_k[i] = np.mean(energy_spectrum_3d[indices])
+        E_k[i] = np.sum(energy_spectrum_3d[indices])
+        counts[i] = np.sum(indices)
     
-    # Plot the energy spectrum
-    k_mid = 0.5 * (k_bins[:-1] + k_bins[1:])  # Midpoint of the wavenumber bins
+    # Normalize by the number of points in each bin
+    non_zero_counts = counts > 0  # Avoid division by zero
+    E_k[non_zero_counts] /= counts[non_zero_counts]
 
+    # Filter out any remaining zero or invalid values
+    valid_bins = E_k > 0
+    k_mid = 0.5 * (k_bins[:-1] + k_bins[1:])  # Midpoint of the wavenumber bins
+    k_mid = k_mid[valid_bins]
+    E_k = E_k[valid_bins]
+
+    # Plot the energy spectrum
     plt.figure(figsize=(8, 6))
     plt.loglog(k_mid, E_k, label='Energy spectrum', color='b')
 
@@ -383,7 +479,9 @@ def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz,
     kolmogorov_slope *= (E_k[1] / kolmogorov_slope[1])  # Normalize the curve for visualization
     plt.loglog(k_mid, kolmogorov_slope, 'r--', label=r'Kolmogorov $k^{-5/3}$ law')
 
-
+    # Highlight the Kolmogorov scale
+    plt.axvline(x=1/eta, color='g', linestyle='--', label=f'Kolmogorov scale ($\eta = {eta:.2e}$)')
+    
     # Plot settings    
     plt.xlabel('Wave number $k$')
     plt.ylabel('Energy $E(k)$')
@@ -453,6 +551,9 @@ def main(args):
         print(f"Processing of the file {filename}")
         # Read the data
         time, nx, ny, nz, x, y, z, ux, uy, uz, pp = read_fields(filename)
+        dx = x[1] - x[0]
+        dy = y[1] - y[0]
+        dz = z[1] - z[0]
 
         # Compute average velocity profiles
         avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, 
@@ -489,18 +590,19 @@ def main(args):
                     ux, uy, uz, avg_ux, avg_uy, avg_uz, args.x_index)
             plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, 
                     args.x_index, time, filename, args.png)
+    
+        if args.nut:
+            nu_t = compute_nu_t(ux, uy, uz, dx, dy, dz, args.cs)
+            plot_nu_t(nu_t[args.x_index, :, :], y, z, x, args.x_index, time, filename, args.png)
 
         if args.kolmogorov:
-            dx = x[1] - x[0]
-            dy = y[1] - y[0]
-            dz = z[1] - z[0]
             epsilon = compute_dissipation_rate(ux, uy, uz, dx, dy, dz)
             eta, tau_eta, v_eta = compute_kolmogorov_scales(epsilon, nu)
             print(f"Dissipation rate epsilon = {epsilon:.4e}")
             print(f"Kolmogorov scale eta = {eta:.4e}")
             # Plot Kolmogorov energy spectrum
             plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, 
-                    epsilon, time, filename, args.png)
+                    epsilon, time, filename, args.png, eta)
 
     return 0
 
@@ -515,10 +617,12 @@ if __name__ == "__main__":
                         help="List of input binary files containing the CFD data")
     parser.add_argument("--x_index", '-xi', type=int, default=0, help="Index in the x direction to calculate profiles")
     parser.add_argument("--reynolds", '-re', type=float, default=1000., help="Reynolds number (nu=1/re)")
+    parser.add_argument('-cs', type=float, default=.1, help="Smagorinsky constant")
     
     # Ajout des arguments booléens
     parser.add_argument("--velocities", '-v', action='store_true', help="Include velocities in the plots")
     parser.add_argument("--fluctuations", '-fl', action='store_true', help="Include fluctuations in the plots")
+    parser.add_argument("--nut", '-nt', action='store_true', help="Calculate and plot turbulent viscosity nu_t")
     parser.add_argument("--kolmogorov", '-k', action='store_true', help="Include Kolmogorov scale process and plot")
     parser.add_argument("--mixing_layer", '-ml', action='store_true', help="Compute and plot mixing layer limits")
     parser.add_argument("--jet", '-j', action='store_true', help="Compute and plot jet limits")

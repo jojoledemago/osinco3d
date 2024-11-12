@@ -133,8 +133,8 @@ contains
 
   subroutine poisson_solver_0011(pp, rhs, dx, dy, dz, nx, ny, nz, &
        omega, eps, kmax, idyn)
-    !> Solve the Poisson equation using SOR method 
-    !> with free-slip boundary conditions in y directions and periodic 
+    !> Solve the Poisson equation using SOR method
+    !> with free-slip boundary conditions in y directions and periodic
     !> in the other.
     !
     !> INPUT:
@@ -152,8 +152,8 @@ contains
     !> omega : Relaxation factor for SOR
 
     real(kind=8), intent(inout) :: pp(:,:,:), omega
-    real(kind=8), intent(in) :: rhs(:,:,:)     
-    real(kind=8), intent(in) :: dx, dy, dz     
+    real(kind=8), intent(in) :: rhs(:,:,:)
+    real(kind=8), intent(in) :: dx, dy, dz
     real(kind=8), intent(in) :: eps
     integer, intent(in) :: nx, ny, nz, kmax, idyn
 

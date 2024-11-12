@@ -436,7 +436,7 @@ contains
     !> time    : simulation time read from file
 
     integer, intent(in) :: nx, ny, nz
-    character(len=10), intent(in) :: filename
+    character(len=30), intent(in) :: filename
     real(kind=8), intent(inout) :: x(nx), y(ny), z(nz)
     real(kind=8), intent(inout) :: ux(nx, ny, nz), uy(nx, ny, nz)
     real(kind=8), intent(inout) :: uz(nx, ny, nz), pp(nx, ny, nz)
@@ -445,7 +445,7 @@ contains
     integer, parameter :: iunit = 102
     integer :: ios, nx_r, ny_r, nz_r
 
-    print *, "* Read flow state from :", filename
+    print *, "* Read flow state from: ", filename
 
     open(unit=iunit, file=filename, status='old', access='stream', &
          form='unformatted', action='read', iostat=ios)
@@ -651,9 +651,6 @@ contains
        ! Default filename if no argument is provided
        filename = "fields.bin"
     end if
-
-    ! Print the selected filename for verification
-    print *, "Simulation file used: ", trim(filename)
 
   end subroutine get_filename
 

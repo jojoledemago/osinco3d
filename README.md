@@ -4,7 +4,7 @@
   <tr>
     <td>This project is a Fortran90 Computational Fluid Dynamics (CFD) code designed to solve the 3D Navier-Stokes equations for incompressible flow using a high-order finite difference method.</td>
     <td style="max-width: 100px;">
-      <img src="https://github.com/jojoledemago/osinco3d/blob/main/examples/tgv_re1600_dns/tgv_qcrit_vort_re1600_dns.png" alt="TGV Re = 1600"/>
+      <img src="https://github.com/jojoledemago/osinco3d/blob/main/examples/tgv_re2500_les/tgv_qcrit_vort_re2500_les.png" alt="TGV Re = 2500"/>
     </td>
   </tr>
 </table>

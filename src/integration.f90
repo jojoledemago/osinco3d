@@ -496,10 +496,9 @@ contains
     ny = size(ux,2)
     nz = size(ux,3)
     call velocity_dirichlet_bc_xn(bux, buy, buz, old_ux, old_uy, old_uz, &
-         u0, dx, dy, dt, 4) !> 1 -> use u0 
-    !> 2 -> use velocity mean value of ux(nx-1, :, :)
+         u0, dx, dt, 3) !> 1 -> use u0 
+    !> 2 -> use velocity mean value of (ux(nx-1, :, :) and ux(nx, :, :))
     !> 3 -> use discret velocity value of ux(nx-1, :, :)
-    !> 4 -> use ux_interp for cx evaluation
     call deryp(dpdy, pp, dy)
     call derzp(dpdz, pp, dz)
 

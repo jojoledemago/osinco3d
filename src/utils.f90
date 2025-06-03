@@ -13,49 +13,34 @@ contains
     real(kind=8), intent(in) :: dy
 
     call dery1D(u_base, u, dy)
-    call normalize1D(u_base, ny)
+    call normalize1D(u_base, 0.d0)
 
     return
   end subroutine calcul_u_base
 
-  subroutine normalize1D(f, n1)
-    !> Normalize the values of a given array to the range [0, 1] based on the 
-    !> absolute values.
+  subroutine normalize1D(f, base)
+
+    !> Normalize the values of a given array to the range [base, 1]
     !> INPUT:
-    !> n1     : Number of grid points
-    !> OUTPUT: 
-    !> f      : array containing the values to be normalized
+    !>   f      : array containing the values to be normalized
+    !>   base   : lower bound of the normalized range (must be < 1)
+    !> OUTPUT:
+    !>   f      : array with normalized values in [base, 1]
+
+    implicit none
+    real(kind=8), intent(in) :: base
     real(kind=8), intent(inout) :: f(:)
-    integer, intent(in) :: n1
-    real(kind=8) :: f_min, f_max, tiny_value
-    real(kind=8), dimension(:), allocatable :: f_abs
-    integer :: i
+    real(kind=8) :: max_val, min_val, range_val
 
-    ! Allocate a temporary array for absolute values
-    allocate(f_abs(n1))
-    tiny_value = tiny(1.d0)
+    max_val = maxval(f)
+    min_val = minval(f)
+    range_val = max_val - min_val
 
-    ! Compute the absolute values
-    do i = 1, n1
-       f_abs(i) = abs(f(i))
-    end do
-
-    ! Find the minimum and maximum values in the absolute array
-    f_min = minval(f_abs)
-    f_max = maxval(f_abs)
-
-    ! Normalize the original array values based on absolute values
-    if ((f_max - f_min) > tiny_value) then
-       do i = 1, n1
-          f(i) = (abs(f(i)) - f_min) / (f_max - f_min)
-       end do
+    if (range_val == 0.d0) then
+       f = base
     else
-       ! If all values are the same, set them all to 0
-       f = 0.0d0
+       f = base + (1.d0 - base) * (f - min_val) / range_val
     end if
-
-    ! Deallocate the temporary array
-    deallocate(f_abs)
 
   end subroutine normalize1D
 

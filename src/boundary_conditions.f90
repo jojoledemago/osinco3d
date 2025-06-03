@@ -227,101 +227,65 @@ contains
   end subroutine velocity_neuman_bc_xn
 
   subroutine velocity_dirichlet_bc_xn(bux, buy, buz, ux, uy, uz, &
-       u0, dx, dy, dt, met)
-    !> Apply Dirichlet boundary conditions for velocity components at the
-    !> outflow boundary (x = nx).
-    !> 
-    !> Outflow non-reflective computation by resolving 1D convective equation.
-    !> 
-    !> This subroutine updates the boundary values for the velocity components
-    !> (ux, uy, uz) at the outflow boundary (x = nx) using a Dirichlet boundary
-    !> condition. The outflow condition is implemented by resolving the 1D
-    !> convective equation to ensure non-reflective behavior at the boundary.
-    !> 
+       u0, dx, dt, met)
+    !> Apply non-reflective Dirichlet boundary conditions for velocity
+    !> components at the outflow boundary (x = nx).
+    !>
+    !> This subroutine applies the 1D convective Orlanski-type outflow condition
+    !> to reduce reflections at the boundary.
+    !>
     !> INPUT:
     !> ux(nx,ny,nz) : X-component of the velocity field.
     !> uy(nx,ny,nz) : Y-component of the velocity field.
-    !> uz(nx,ny,nz) : Z-component of the velocity field.    
-    !> u0           : Reference veolcity 
-    !> dx           : Mesh size step in the x-direction.
-    !> dy           : Mesh size step in the y-direction.
-    !> dt           : Time step size.
-    !> met          : Methode to evaluate convection coefficient cx
+    !> uz(nx,ny,nz) : Z-component of the velocity field.
+    !> u0           : Reference velocity (used in fixed or target damping).
+    !> dx           : Grid spacing in the x-direction.
+    !> dt           : Time step.
+    !> met          : Method for estimating the convective velocity:
+    !>                1 = constant reference velocity (u0),
+    !>                2 = mean velocity at boundary,
+    !>                3 = local velocity at nx-1.
     !>
     !> OUTPUT:
-    !> bux(:,:)   : X-component of the velocity field with updated boundary 
-    !> values.
-    !> buy(:,:)   : Y-component of the velocity field with updated boundary 
-    !> values.
-    !> buz(:,:)   : Z-component of the velocity field with updated boundary 
-    !> values.
+    !> bux(:,:)     : X-component of the velocity field with updated boundary values.
+    !> buy(:,:)     : Y-component of the velocity field with updated boundary values.
+    !> buz(:,:)     : Z-component of the velocity field with updated boundary values.
 
     real(kind=8), intent(inout) :: bux(:,:), buy(:,:), buz(:,:)
-    real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:), dx, dy, dt, u0
+    real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+    real(kind=8), intent(in) :: dx, dt, u0
     integer, intent(in) :: met
 
-    real(kind=8) :: udx, cx, ux_interp, u_mean, distance_dx, distance_dxy
     integer :: nx, ny, nz, j, k
+    real(kind=8) :: cx, u_mean, udx
 
-    nx = size(ux, 1)
-    ny = size(uy, 2)
-    nz = size(uz, 3)
+    nx = size(ux,1)
+    ny = size(uy,2)
+    nz = size(uz,3)
     udx = 1.d0 / dx
 
-    if (met == 1) then
-       ! ! Use the reference value of velocity
-       cx = u0 * dt * udx
-       bux = ux(nx, :, :) - cx * (ux(nx, :, :) - ux(nx-1, :, :))
-       buy = uy(nx, :, :) - cx * (uy(nx, :, :) - uy(nx-1, :, :))
-       buz = uz(nx, :, :) - cx * (uz(nx, :, :) - uz(nx-1, :, :))
-    else if (met == 2) then
-       ! Use the mean value of velocity at the boundary
-       u_mean = average_2d_array(ux(nx-1, :, :))
-       cx = u_mean * dt * udx
-       bux = ux(nx, :, :) - cx * (ux(nx, :, :) - ux(nx-1, :, :))
-       buy = uy(nx, :, :) - cx * (uy(nx, :, :) - uy(nx-1, :, :))
-       buz = uz(nx, :, :) - cx * (uz(nx, :, :) - uz(nx-1, :, :))
-    else if (met == 3) then
-       ! Use the discret value of velocity at the boundary (nx-1)
-       do k = 1, nz
-          do j = 1, ny
-             cx = ux(nx, j, k) * dt * udx
-             bux(j, k) = ux(nx, j, k) - cx * (ux(nx, j, k) - ux(nx-1, j, k))
-             buy(j, k) = uy(nx, j, k) - cx * (uy(nx, j, k) - uy(nx-1, j, k))
-             buz(j, k) = uz(nx, j, k) - cx * (uz(nx, j, k) - uz(nx-1, j, k))
-          end do
-       end do
-    else if (met == 4) then
-       ! Interpolate the velocity field at the boundary
-       distance_dx = dx
-       distance_dxy = sqrt(dx**2 + dy**2)
-       do k = 1, nz
-          j = 1
-          ux_interp = ux(nx-1, j, k)
-          cx = ux_interp * dt * udx
-          bux(j, k) = ux(nx, j, k) - cx * (ux(nx, j, k) - ux(nx-1, j, k))
-          buy(j, k) = uy(nx, j, k) - cx * (uy(nx, j, k) - uy(nx-1, j, k))
-          buz(j, k) = uz(nx, j, k) - cx * (uz(nx, j, k) - uz(nx-1, j, k))
-          do j = 2, ny-1
-             ux_interp = (ux(nx-1, j, k) / distance_dx + &
-                  ux(nx-1, j-1, k) / distance_dxy + &
-                  ux(nx-1, j+1, k) / distance_dxy) / &
-                  (1.0 / distance_dx + 2.0 / distance_dxy)
-             cx = ux_interp * dt * udx
-             bux(j, k) = ux(nx, j, k) - cx * (ux(nx, j, k) - ux(nx-1, j, k))
-             buy(j, k) = uy(nx, j, k) - cx * (uy(nx, j, k) - uy(nx-1, j, k))
-             buz(j, k) = uz(nx, j, k) - cx * (uz(nx, j, k) - uz(nx-1, j, k))
-          end do
-          j = ny
-          ux_interp = ux(nx-1, j, k)
-          cx = ux_interp * dt * udx
-          bux(j, k) = ux(nx, j, k) - cx * (ux(nx, j, k) - ux(nx-1, j, k))
-          buy(j, k) = uy(nx, j, k) - cx * (uy(nx, j, k) - uy(nx-1, j, k))
-          buz(j, k) = uz(nx, j, k) - cx * (uz(nx, j, k) - uz(nx-1, j, k))
-       end do
-    end if
-    return
+    do k = 1, nz
+       do j = 1, ny
+             ! Estimate convective velocity coefficient cx depending on method
+             if (met == 1) then
+                cx = u0 * dt * udx
+             else if (met == 2) then
+                u_mean = 0.5d0 * (ux(nx-2,j,k) + ux(nx-1,j,k))
+                cx = u_mean * dt * udx
+             else if (met == 3) then
+                cx = ux(nx-1,j,k) * dt * udx
+             else
+                cx = u0 * dt * udx
+             end if
 
+             ! Orlanski convective update (1st-order)
+             bux(j,k) = ux(nx,j,k) - cx * (ux(nx,j,k) - ux(nx-1,j,k))
+             buy(j,k) = uy(nx,j,k) - cx * (uy(nx,j,k) - uy(nx-1,j,k))
+             buz(j,k) = uz(nx,j,k) - cx * (uz(nx,j,k) - uz(nx-1,j,k))
+       end do
+    end do
+
+    return
   end subroutine velocity_dirichlet_bc_xn
 
   subroutine inflow_turbulent(u_noise, u_base, inflow_noise, ny, nz)

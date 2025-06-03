@@ -39,6 +39,7 @@ program osinco3d
   else
      call get_filename(fields_name_file)
      call read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time0, fields_name_file)
+     time = time0
      phi = 0.d0
   end if
   if (nbcx1 == INFLOW_OUTFLOW) then

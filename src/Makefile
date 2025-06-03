@@ -1,17 +1,25 @@
-# Compilateur Fortran
-FC = gfortran
+#===============================================================================
+# Fortran Compiler and Flags
+#===============================================================================
+FC      = gfortran
+FFLAGS  = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics -fPIC -I/usr/include
+LDFLAGS =
+LIBS    = -lfftw3 -lm
 
-# Options de compilation
-FFLAGS = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics
+#===============================================================================
+# Project Structure
+#===============================================================================
+SRCDIR     ?= ./
+OBJDIR     ?= $(SRCDIR)/build
+EXEDIR     ?= $(SRCDIR)/../bin
+EXECUTABLE = $(EXEDIR)/osinco3d.app
 
-# Dossiers de sortie
-SRCDIR ?= ./
-OBJDIR ?= $(SRCDIR)/build
-EXEDIR ?= $(SRCDIR)/../bin
-
-# Noms des fichiers sources
+#===============================================================================
+# Source Files
+#===============================================================================
 SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/derivation.f90 \
+          $(SRCDIR)/noise_mod.f90 \
           $(SRCDIR)/boundary_conditions.f90 \
           $(SRCDIR)/poisson.f90 \
           $(SRCDIR)/initialization.f90 \
@@ -23,32 +31,44 @@ SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/les_turbulence.f90 \
           $(SRCDIR)/integration.f90 \
           $(SRCDIR)/osinco3d_main.f90
-# Nom de l'executable
-EXECUTABLE = $(EXEDIR)/osinco3d.app
 
-# Liste des fichiers objets à générer
-OBJECTS = $(patsubst $(SRCDIR)/%.f90,$(OBJDIR)/%.o,$(SOURCES))
-DEPS = $(OBJECTS:.o=.d)
+#===============================================================================
+# Build Rules
+#===============================================================================
+OBJECTS = $(patsubst $(SRCDIR)/%.f90, $(OBJDIR)/%.o, $(SOURCES))
+DEPS    = $(OBJECTS:.o=.d)
 
-# Règle par défaut pour compiler l'exécutable
+#===============================================================================
+# Default Target
+#===============================================================================
 all: directories $(EXECUTABLE)
-	@echo "Compilation completed"
+	@echo "Compilation completed."
 
-# Règle pour créer les répertoires de sortie
+# Create directories if they don't exist
 directories:
 	@mkdir -p $(OBJDIR) $(EXEDIR)
 
-# Règle pour créer l'exécutable
+# Link object files into the final executable
 $(EXECUTABLE): $(OBJECTS)
-	$(FC) $(OBJECTS) -o $@
+	$(FC) $(LDFLAGS) $(OBJECTS) -o $@ $(LIBS)
 
-# Règle pour créer les fichiers objets
+# Compile .f90 files into .o with module output in OBJDIR
 $(OBJDIR)/%.o: $(SRCDIR)/%.f90
 	$(FC) $(FFLAGS) -c -o $@ $<
 
-# Inclusion des fichiers de dépendances
+# Include dependency files for smart rebuilding
 -include $(DEPS)
 
-# Règle pour nettoyer les fichiers temporaires et l'exécutable
+#===============================================================================
+# Utility Targets
+#===============================================================================
 clean:
-	rm -rf $(OBJDIR)/*.o $(OBJDIR)/*.mod $(OBJDIR)/*.d 
+	rm -rf $(OBJDIR)/*.o $(OBJDIR)/*.mod $(OBJDIR)/*.d
+	@echo "Object and module files cleaned."
+
+mrproper: clean
+	rm -rf $(EXECUTABLE)
+	@echo "Full clean: executable removed."
+
+.PHONY: all clean mrproper directories
+

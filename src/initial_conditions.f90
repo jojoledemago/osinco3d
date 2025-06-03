@@ -1,6 +1,7 @@
 module initial_conditions
   use functions
   use utils
+  use noise_mod
   use initialization
   use derivation
   use visualization
@@ -137,7 +138,7 @@ contains
 
     integer :: i, j, k 
     integer, parameter :: n_jets_y=11, n_jets_z=11
-    real(kind=8) :: twopi, y_length, z_length, A
+    real(kind=8) :: twopi, twox, twoy, twoz, y_length, z_length, A
 
     print *, "* Condition Initiale for a the Taylor-Green vortex"
     if (ici == 1) print *, "* No excitation of the initial condition in the case of TGV"
@@ -148,12 +149,15 @@ contains
     y_length = y(ny) - y(1)
     z_length = z(nz) - z(1)
     do k = 1, nz
+       twoz = 2.d0 * z(k)
        do j = 1, ny
+          twoy = 2.d0 * y(j)
           do i = 1, nx
+             twox = 2.d0 * x(i)
              ux(i,j,k) =  ratio * u0/l0 * sin(x(i)) * cos(y(j))* cos(z(k))
              uy(i,j,k) = -ratio * u0/l0 * cos(x(i)) * sin(y(j))* cos(z(k))
              uz(i,j,k) = 0.d0
-             pp(i,j,k) = 0.0625d0 * (cos(2.d0*x(i)) + cos(2.d0*y(j)) + cos(2.d0*y(k)) + 2.d0) !https://cfd.ku.edu/hiocfd/case_c3.5.pdf
+             pp(i,j,k) = 0.0625d0 * (cos(twox) + cos(twoy)) * (cos(twoz) + 2.d0) !https://cfd.ku.edu/hiocfd/case_c3.5.pdf
              if (nscr == 1) then
                 phi(i,j,k) = 0.5d0 * &
                      (cos(twopi * n_jets_y * (y(j) - y(1)) / y_length) * &                  
@@ -521,31 +525,41 @@ contains
     real(kind=8), intent(inout) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(in) :: dy, u0, init_noise_x, init_noise_y, init_noise_z
     integer, intent(in) :: nx, ny, nz
-    real(kind=8), dimension(nx, ny, nz) :: ux_noise, uy_noise, uz_noise
+    real(kind=8), dimension(nx) :: ux_noise 
+    real(kind=8), dimension(nx) :: uy_noise
+    real(kind=8), dimension(nx) :: uz_noise
     real(kind=8), dimension(ny) :: u_base
-    integer :: i, j, k, n_rand
+    real(kind=8) :: k0, s
+    integer :: i, j, k
 
     call calcul_u_base(u_base, ux(1,:,1), dy)
-
-    call print_noise_gene("Ux")
-    n_rand = random_between(256, 512)
-    call generate_pink_noise(nx, ny, nz, ux_noise, n_rand)
-    call print_noise_gene("Uy")
-    n_rand = random_between(256, 512)
-    call generate_pink_noise(nx, ny, nz, uy_noise, n_rand)
-    call print_noise_gene("Uz")
-    n_rand = random_between(256, 512)
-    call generate_pink_noise(nx, ny, nz, uz_noise, n_rand)
+    if (init_noise_x > 0.d0) then
+       call print_noise_gene("Ux")
+    end if
+    if (init_noise_y > 0.d0) then
+       call print_noise_gene("Uy")
+    end if
+    if (init_noise_z > 0.d0) then
+       call print_noise_gene("Uz")
+    end if
 
     do k = 1, nz
+       k0 = 10.d0
+       s = 11.d0 / 3.d0
+       call noise_generator_1D(nx, k0, s, ux_noise)
+       call noise_generator_1D(nx, k0, s, uy_noise)
+       call noise_generator_1D(nx, k0, s, uz_noise)
+       call normalize1D(ux_noise, -1.0d0)
+       call normalize1D(uy_noise, -1.0d0)
+       call normalize1D(uz_noise, -1.0d0)
        do j = 1, ny
           do i = 1, nx 
              ux(i,j,k) = ux(i,j,k) + &
-                  u0 * init_noise_x * u_base(j) * ux_noise(i,j,k)
+                  u0 * init_noise_x * u_base(j) * ux_noise(i)
              uy(i,j,k) = uy(i,j,k) + &
-                  u0 * init_noise_y * u_base(j) * uy_noise(i,j,k)
+                  u0 * init_noise_y * u_base(j) * uy_noise(i)
              uz(i,j,k) = uz(i,j,k) + &
-                  u0 * init_noise_z * u_base(j) * uz_noise(i,j,k)
+                  u0 * init_noise_z * u_base(j) * uz_noise(i)
           end do
        end do
     end do

@@ -1,646 +1,590 @@
-import numpy as np
-import argparse
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
-import glob
+#!/bin/python3
+# encoding: utf-8
+
 import sys
-import os
+import glob
+import argparse
+import itertools
+
+import matplotlib.pyplot as plt
+
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
+
+def print_block(title, entries):
+    """Print a well-formatted block of labeled entries."""
+    print(f"\n--- {title} ---")
+    for label, val in entries:
+        print(f"  {label:<28}: {val}")
+    print("-" * 48)
+
 
 def read_fields(filename):
-    """Read fields from a binary file."""
-    with open(filename, 'rb') as file:
-        # Read time
-        time = np.fromfile(file, dtype=np.float64, count=1)[0]
+    with open(filename, 'rb') as f:
+        time = np.fromfile(f, dtype=np.float64, count=1)[0]
+        nx, ny, nz = np.fromfile(f, dtype=np.int32, count=3)
+        x = np.fromfile(f, dtype=np.float64, count=nx)
+        y = np.fromfile(f, dtype=np.float64, count=ny)
+        z = np.fromfile(f, dtype=np.float64, count=nz)
+        n = nx * ny * nz
+        ux = np.fromfile(f, dtype=np.float64, count=n).reshape((nx, ny, nz), order='F')
+        uy = np.fromfile(f, dtype=np.float64, count=n).reshape((nx, ny, nz), order='F')
+        uz = np.fromfile(f, dtype=np.float64, count=n).reshape((nx, ny, nz), order='F')
+        pp = np.fromfile(f, dtype=np.float64, count=n).reshape((nx, ny, nz), order='F')
+    return time, x, y, z, ux, uy, uz, pp
 
-        # Read dimensions nx, ny, nz
-        nx, ny, nz = np.fromfile(file, dtype=np.int32, count=3)
+def compute_momentum_thickness(y, u_profile, U1, U2):
+    """Compute momentum thickness delta_theta for a given velocity profile."""
+    delta_u = U1 - U2
+    integrand = ((U1 - u_profile) / delta_u) * ((u_profile - U2) / delta_u)
+    return np.trapz(integrand, y)
 
-        # Read coordinates x, y, z
-        x = np.fromfile(file, dtype=np.float64, count=nx)
-        y = np.fromfile(file, dtype=np.float64, count=ny)
-        z = np.fromfile(file, dtype=np.float64, count=nz)
+def plot_velocity_profiles(time, x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, direction='x'):
+    """
+    Plot 1D velocity profiles along a given direction, with proper axis orientation.
+    If direction is 'y', the profile is plotted horizontally (u vs y).
+    """
 
-        # Read velocity components ux, uy, uz
-        ux = np.fromfile(file, dtype=np.float64, count=nx * ny * nz).reshape((nx, ny, nz), order='F')
-        uy = np.fromfile(file, dtype=np.float64, count=nx * ny * nz).reshape((nx, ny, nz), order='F')
-        uz = np.fromfile(file, dtype=np.float64, count=nx * ny * nz).reshape((nx, ny, nz), order='F')
+    # === 1D profile extraction ===
+    interp_ux = RegularGridInterpolator((x, y, z), ux, bounds_error=False, fill_value=None)
+    interp_uy = RegularGridInterpolator((x, y, z), uy, bounds_error=False, fill_value=None)
+    interp_uz = RegularGridInterpolator((x, y, z), uz, bounds_error=False, fill_value=None)
 
-        # Read pressure component pp
-        pp = np.fromfile(file, dtype=np.float64, count=nx * ny * nz).reshape((nx, ny, nz), order='F')
-
-    return time, nx, ny, nz, x, y, z, ux, uy, uz, pp
-
-def compute_average_velocity(ux, uy, uz, x_index):
-    """Compute the average velocity profiles along y for a given x index."""
-    avg_ux = np.mean(ux[x_index, :, :], axis=1)  # Average over y
-    avg_uy = np.mean(uy[x_index, :, :], axis=1)
-    avg_uz = np.mean(uz[x_index, :, :], axis=1)
-    return avg_ux, avg_uy, avg_uz
-
-def compute_fluctuations(ux, uy, uz, avg_ux, avg_uy, avg_uz, x_index):
-    """Compute the fluctuation components of velocity at a given x index."""
-    ux_fluct = ux[x_index, :, :] - avg_ux[:, np.newaxis]
-    uy_fluct = uy[x_index, :, :] - avg_uy[:, np.newaxis]
-    uz_fluct = uz[x_index, :, :] - avg_uz[:, np.newaxis]
-    return ux_fluct, uy_fluct, uz_fluct
-
-def compute_mix_layer_limits(avg_ux, y, min_max_threshold, gradient_threshold_factor):
-    """Compute the lower and upper limits of the mixing layer using min-max and gradient methods."""
-    u_min = avg_ux[ 0]
-    u_max = avg_ux[-1]
-    
-    # Min-Max Method
-    target_low = min_max_threshold * u_min
-    target_high = min_max_threshold * u_max
-    
-    # Find indices for min-max method
-    idx_low = np.where(avg_ux >= target_low)[0][0]  # First index where avg_ux >= target_low
-    idx_high = np.where(avg_ux <= target_high)[0][-1]  # Last index where avg_ux <= target_high
-    lower_limit_min_max = y[idx_low]
-    upper_limit_min_max = y[idx_high]
-    
-    # Gradient Method
-    du_dy = np.gradient(avg_ux, y)
-    max_gradient = np.max(np.abs(du_dy))
-    gradient_threshold = gradient_threshold_factor * max_gradient
-
-    # Find indices for gradient method
-    idx_gradient = np.where(np.abs(du_dy) > gradient_threshold)[0]
-    if len(idx_gradient) > 0:
-        lower_limit_gradient = y[idx_gradient[0]]
-        upper_limit_gradient = y[idx_gradient[-1]]
+    if direction == 'x':
+        coord_range = x
+        pts = np.array([[xi, y_plot, z_plot] for xi in x])
+    elif direction == 'y':
+        coord_range = y
+        pts = np.array([[x_plot, yi, z_plot] for yi in y])
+    elif direction == 'z':
+        coord_range = z
+        pts = np.array([[x_plot, y_plot, zi] for zi in z])
     else:
-        lower_limit_gradient = upper_limit_gradient = None  # No layer detected
+        raise ValueError("Direction must be 'x', 'y', or 'z'")
 
-    return (lower_limit_min_max, upper_limit_min_max), (lower_limit_gradient, upper_limit_gradient)
+    ux_vals = interp_ux(pts)
+    uy_vals = interp_uy(pts)
+    uz_vals = interp_uz(pts)
 
-def compute_jet_limits(avg_ux, y, threshold=0.01):
-    """
-    Computes the jet limits based on a relative velocity threshold.
+    plt.figure(figsize=(16, 9))
+    # Daltonian-friendly colors
+    if direction == 'y':
+        # Horizontal plot: velocity vs y
+        plt.plot(ux_vals, coord_range, label='u_x', color='#0072B2')
+        plt.plot(uy_vals, coord_range, label='u_y', color='#E69F00')
+        plt.plot(uz_vals, coord_range, label='u_z', color='#009E73')
+        plt.xlabel('Velocity')
+        plt.ylabel('y')
+        plt.title(f'Velocity profiles along y at (x={x_plot}, z={z_plot})\n$t = {time:.1f}$')
+    else:
+        # Default: direction on x-axis
+        plt.plot(coord_range, ux_vals, label='u_x', color='#0072B2')
+        plt.plot(coord_range, uy_vals, label='u_y', color='#E69F00')
+        plt.plot(coord_range, uz_vals, label='u_z', color='#009E73')
+        plt.xlabel(f'{direction}-coordinate')
+        plt.ylabel('Velocity')
+        plt.title(f'Velocity profiles at (x={x_plot}, y={y_plot}, z={z_plot})\n$t = {time:.1f}$')
 
-    Parameters:
-    - x : Array of x (or y) coordinates perpendicular to the flow direction
-    - u : Velocity values at each point along the x axis
-    - threshold : Percentage of the maximum velocity used to define the jet thickness.
-
-    Returns:
-    - jet_min, jet_max : Positions corresponding to the limits of the jet.
-    """
-    u_max = np.max(avg_ux)
-    u_threshold = threshold * u_max  # For example, 10% of u_max
-
-    # Find the indices where the velocity is greater than or equal to the threshold
-    jet_region = np.where(avg_ux >= u_threshold)[0]
-
-    if len(jet_region) == 0:
-        return None, None  # No jet detected
-
-    jet_min = y[jet_region[0]]
-    jet_max = y[jet_region[-1]]
-
-    return jet_min, jet_max
-
-def compute_nu_t(ux, uy, uz, dx, dy, dz, Cs=0.1):
-    """
-    Calculate the turbulent viscosity nu_t for a Smagorinsky model.
-
-    Parameters:
-    -----------
-    ux, uy, uz : 3D numpy arrays
-        Velocity components.
-    dx, dy, dz : floats
-        Grid size in each direction.
-    Cs : float
-        Smagorinsky constant (default is 0.1).
-
-    Returns:
-    --------
-    nu_t : 2D numpy array
-        Turbulent viscosity for a constant x-plane.
-    """
-
-    # Local mesh size Δ = (dx * dy * dz)^(1/3)
-    delta = (dx * dy * dz)**(1/3)
-
-    # Calculate the derivatives of velocity components
-    dux_dy = np.gradient(ux, dy, axis=1, edge_order=2)
-    dux_dz = np.gradient(ux, dz, axis=2, edge_order=2)
-    duy_dx = np.gradient(uy, dx, axis=0, edge_order=2)
-    duy_dz = np.gradient(uy, dz, axis=2, edge_order=2)
-    duz_dx = np.gradient(uz, dx, axis=0, edge_order=2)
-    duz_dy = np.gradient(uz, dy, axis=1, edge_order=2)
-
-    # Calculate the strain rate tensor Sij
-    S11 = np.gradient(ux, dx, axis=0, edge_order=2)
-    S22 = np.gradient(uy, dy, axis=1, edge_order=2)
-    S33 = np.gradient(uz, dz, axis=2, edge_order=2)
-
-    S12 = 0.5 * (dux_dy + duy_dx)
-    S13 = 0.5 * (dux_dz + duz_dx)
-    S23 = 0.5 * (duy_dz + duz_dy)
-
-    # Magnitude of the strain rate tensor |S|
-    S_mag = np.sqrt(2 * (S11**2 + S22**2 + S33**2 + 2 * (S12**2 + S13**2 + S23**2)))
-
-    # Calculate turbulent viscosity nu_t
-    nu_t = (Cs * delta)**2 * S_mag
-
-    return nu_t
-
-def compute_tke(ux, uy, uz):
-    u_mean = np.mean(ux)
-    v_mean = np.mean(uy)
-    w_mean = np.mean(uz)
-
-    u_prime = ux - u_mean
-    v_prime = uy - v_mean
-    w_prime = uz - w_mean
-
-    # Compute turbulent kinetic energy
-    tke = 0.5 * (np.mean(u_prime**2) + 
-            np.mean(v_prime**2) + np.mean(w_prime**2))
-    
-    return tke
-
-def compute_dissipation_rate(ux, uy, uz, dx, dy, dz):
-    """
-    Estimer le taux de dissipation d'énergie à partir des gradients des vitesses.
-    
-    ε = 2ν * (Sij * Sij), où Sij est le tenseur des taux de déformation
-    """
-    # Calcul des dérivées des composantes de vitesse dans chaque direction
-    dux_dx = np.gradient(ux, dx, axis=0, edge_order = 2)
-    duy_dy = np.gradient(uy, dy, axis=1, edge_order = 2)
-    duz_dz = np.gradient(uz, dz, axis=2, edge_order = 2)
-    
-    dux_dy = np.gradient(ux, dy, axis=1, edge_order = 2)
-    dux_dz = np.gradient(ux, dz, axis=2, edge_order = 2)
-    duy_dx = np.gradient(uy, dx, axis=0, edge_order = 2)
-    duy_dz = np.gradient(uy, dz, axis=2, edge_order = 2)
-    duz_dx = np.gradient(uz, dx, axis=0, edge_order = 2)
-    duz_dy = np.gradient(uz, dy, axis=1, edge_order = 2)
-    
-    # Tenseur des taux de déformation Sij
-    Sij = 0.5 * (dux_dx**2 + duy_dy**2 + duz_dz**2 +
-                 dux_dy**2 + dux_dz**2 +
-                 duy_dx**2 + duy_dz**2 +
-                 duz_dx**2 + duz_dy**2)
-
-    # Taux de dissipation (en moyenne sur le volume)
-    epsilon = np.mean(Sij)
-    
-    return epsilon
-
-def compute_kolmogorov_scales(epsilon, viscosity):
-    """
-    Calculer l'échelle de Kolmogorov en longueur, temps et vitesse.
-    """
-    eta = (viscosity**3 / epsilon)**0.25
-    tau_eta = (viscosity / epsilon)**0.5
-    v_eta = (viscosity * epsilon)**0.25
-    return eta, tau_eta, v_eta
-
-def plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, viscosity, 
-        min_max_limits, gradient_limits, jet_limits, x, x_index, time,
-        filename, png):
-    """Plot the average velocity profiles and their derivatives."""
-    # Calculate the derivatives using np.gradient
-    d_avg_ux = np.gradient(avg_ux, y, edge_order = 2)
-    d_avg_uy = np.gradient(avg_uy, y, edge_order = 2)
-    d_avg_uz = np.gradient(avg_uz, y, edge_order = 2)
-
-    # Define colors suitable for color-blind users
-    color_ux = '#E69F00'  # orange
-    color_uy = '#56B4E9'  # sky blue
-    color_uz = '#009E73'  # teal
-    color_thickness = '#CC79A7'  # pink for mixing layer limits
-
-    plt.figure(figsize=(12, 9))
-    # Set the overall title for the figure, including x[x_index]
-    plt.suptitle(f'Velocity Profiles for x = {x[x_index]:.2f} at time = {time:.1f}', fontsize=14)
-
-    # Plotting the average velocity profile for u_x
-    plt.subplot(1, 3, 1)
-    plt.plot(avg_ux, y, label='$\\langle u_x \\rangle$', color=color_ux)
-
-    if (min_max_limits):
-        # Plotting the limits of the mixing layer
-        lower_limit_min_max, upper_limit_min_max = min_max_limits
-        plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':', label='Mixing Layer Limit (Min-Max)')
-        plt.axhline(y=upper_limit_min_max, color=color_thickness, linestyle=':')
-
-        lower_limit_gradient, upper_limit_gradient = gradient_limits
-        if lower_limit_gradient is not None and upper_limit_gradient is not None:
-            plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.', label='Mixing Layer Limit (Gradient)')
-            plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
-
-    if jet_limits is not None:
-        jet_min, jet_max = jet_limits
-        plt.axhline(jet_min, color='b', linestyle=':', 
-                label='Jet limit (Min-Max)')
-        plt.axhline(jet_max, color='b', linestyle=':')
-
-
-    plt.title('Velocity Profile $\\langle u_x \\rangle$')
-    plt.xlabel('Velocity ($u_x$)')
-    plt.ylabel('Height (y)')
-    plt.ylim([min(y), max(y)])  # Set y-axis limits
-    plt.grid()
     plt.legend()
-
-    # Plotting the average velocity profiles for u_y and u_z
-    plt.subplot(1, 3, 2)
-    plt.plot(avg_uy, y, label='$\\langle u_y \\rangle$', color=color_uy, linestyle='--', linewidth=1.5)
-    plt.plot(avg_uz, y, label='$\\langle u_z \\rangle$', color=color_uz, linestyle='-.', linewidth=1.5)
-    if (min_max_limits):
-        plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':')
-        plt.axhline(y=upper_limit_min_max, color=color_thickness, linestyle=':')
-        if lower_limit_gradient is not None and upper_limit_gradient is not None:
-            plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.')
-            plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
-
-    if jet_limits is not None:
-        jet_min, jet_max = jet_limits
-        plt.axhline(jet_min, color='b', linestyle=':')
-        plt.axhline(jet_max, color='b', linestyle=':')
-
-    plt.title('Velocity Profiles $\\langle u_y \\rangle$ and $\\langle u_z \\rangle$')
-    plt.xlabel('Velocity')
-    plt.ylabel('Height (y)')
-    plt.ylim([min(y), max(y)])  # Set y-axis limits
-    plt.grid()
-    plt.legend()
-
-    # Plotting the derivatives of the velocity profiles
-    plt.subplot(1, 3, 3)
-    plt.plot(d_avg_ux, y, label='$d\\langle u_x \\rangle/dy$', color=color_ux)
-    plt.plot(d_avg_uy, y, label='$d\\langle u_y \\rangle/dy$', color=color_uy, linestyle='--', linewidth=1.5)
-    plt.plot(d_avg_uz, y, label='$d\\langle u_z \\rangle/dy$', color=color_uz, linestyle='-.', linewidth=1.5)
-    if (min_max_limits):
-        plt.axhline(y=lower_limit_min_max, color=color_thickness, linestyle=':')
-        plt.axhline(y=upper_limit_min_max, color=color_thickness, linestyle=':')
-        if lower_limit_gradient is not None and upper_limit_gradient is not None:
-            plt.axhline(y=lower_limit_gradient, color=color_thickness, linestyle='-.')
-            plt.axhline(y=upper_limit_gradient, color=color_thickness, linestyle='-.')
-
-    if jet_limits is not None:
-        jet_min, jet_max = jet_limits
-        plt.axhline(jet_min, color='b', linestyle=':')
-        plt.axhline(jet_max, color='b', linestyle=':')
-
-    plt.title('Velocity Gradients')
-    plt.xlabel('Velocity Gradient')
-    plt.ylabel('Height (y)')
-    plt.ylim([min(y), max(y)])  # Set y-axis limits
-    plt.grid()
-    plt.legend()
-
-    output_filename = f'./images/velocity_profile_{os.path.basename(filename).replace(".bin", "")}.png'
+    plt.grid(True)
     plt.tight_layout()
-    if (png):
-        plt.savefig(output_filename)
-        print(f"Velocity profile saved as {output_filename}")
-    else:
-        plt.show()
-    plt.close()
+    plt.show()
 
-def plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, x_index, time, filename, png):
-    """Plot the velocity fluctuations in 3D with a single colormap and shared colorbar."""
-    fig = plt.figure(figsize=(18, 6))
-    # Set the overall title for the figure, including x[x_index]
-    fig.suptitle(f'Velocity Fluctuations for x = {x[x_index]:.2f} at time = {time:.1f}', fontsize=14)
-
-    # Create a meshgrid for y and z
-    Y, Z = np.meshgrid(y, z, indexing='ij')
-
-    # Find the global minimum and maximum values for the color scale
-    vmin = min(np.min(ux_fluct), np.min(uy_fluct), np.min(uz_fluct))
-    vmax = max(np.max(ux_fluct), np.max(uy_fluct), np.max(uz_fluct))
-
-    # Fluctuations for u_x
-    ax1 = fig.add_subplot(131, projection='3d')
-    surf_ux = ax1.plot_surface(Y, Z, ux_fluct, cmap='viridis', vmin=vmin, vmax=vmax)
-    ax1.set_title("Fluctuations $u'_x$")
-    ax1.set_xlabel("Height (y)")
-    ax1.set_ylabel("Span (z)")
-    ax1.set_zlabel("Fluctuations $u'_x$")
-    #set_axis_ticks(ax1, ux_fluct, axis='z')
-
-    # Fluctuations for u_y
-    ax2 = fig.add_subplot(132, projection='3d')
-    surf_uy = ax2.plot_surface(Y, Z, uy_fluct, cmap='viridis', vmin=vmin, vmax=vmax)
-    ax2.set_title("Fluctuations $u'_y$")
-    ax2.set_xlabel("Height (y)")
-    ax2.set_ylabel("Span (z)")
-    ax2.set_zlabel("Fluctuations $u'_y$")
-    #set_axis_ticks(ax2, uy_fluct, axis='z')
-
-    # Fluctuations for u_z
-    ax3 = fig.add_subplot(133, projection='3d')
-    surf_uz = ax3.plot_surface(Y, Z, uz_fluct, cmap='viridis', vmin=vmin, vmax=vmax)
-    ax3.set_title("Fluctuations $u'_z$")
-    ax3.set_xlabel("Height (y)")
-    ax3.set_ylabel("Span (z)")
-    ax3.set_zlabel("Fluctuations $u'_z$")
-    #set_axis_ticks(ax3, uz_fluct, axis='z')
-
-    # Adjust layout manually instead of using tight_layout
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1, wspace=0.3)
-
-    output_filename = f'./images/fluctuations_{os.path.basename(filename).replace(".bin", "")}.png'
-    if png:
-        plt.savefig(output_filename)
-        print(f"Fluctuations plot saved as {output_filename}")
-    else:
-        plt.show()
-    plt.close()
-
-def plot_nu_t(nu_t, y, z, x, x_index, time, filename, png):
+def plot_mixing_layer_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, re_init, threshold_ratio=0.05):
     """
-    Plot the turbulent viscosity nu_t for a constant x-plane.
+    Analyze and plot the mixing layer at a given (x,z) position:
+    - Mean velocity profiles (averaged over x and z)
+    - Local velocity line at (x_plot, z_plot)
+    - Fluctuations relative to the mean profiles
+    "
+    """
+    # Compute mean profiles along y (averaged over x and z)
+    ux_profile = np.mean(ux, axis=(0, 2))
+    uy_profile = np.mean(uy, axis=(0, 2))
+    uz_profile = np.mean(uz, axis=(0, 2))
+
+    # Extract profile at (x_plot, z_plot)
+    ix = np.argmin(np.abs(x - x_plot))
+    iz = np.argmin(np.abs(z - z_plot))
+    ux_line = ux[ix, :, iz]
+    uy_line = uy[ix, :, iz]
+    uz_line = uz[ix, :, iz]
+
+    # Compute fluctuations
+    ux_fluct = ux_line - ux_profile
+    uy_fluct = uy_line - uy_profile
+    uz_fluct = uz_line - uz_profile
+
+    # Estimate mixing layer bounds using ux_profile
+    dux_dy = np.gradient(ux_profile, y, edge_order=2)
+    grad_max_idx = np.argmax(np.abs(dux_dy))
+    grad_max_val = np.abs(dux_dy[grad_max_idx])
+    y_center = y[grad_max_idx]
+
+    ux_min, ux_max = ux_profile[0], ux_profile[-1]
+    ux_01 = ux_min + 0.01 * (ux_max - ux_min)
+    ux_99 = ux_min + 0.99 * (ux_max - ux_min)
+
+    y_01 = np.interp(ux_01, ux_profile, y)
+    y_99 = np.interp(ux_99, ux_profile, y)
+
+    lower_idx = grad_max_idx
+    while lower_idx > 0 and np.abs(dux_dy[lower_idx]) > threshold_ratio * grad_max_val:
+        lower_idx -= 1
+    upper_idx = grad_max_idx
+    while upper_idx < len(y) - 1 and np.abs(dux_dy[upper_idx]) > threshold_ratio * grad_max_val:
+        upper_idx += 1
+
+    y_lower = y[lower_idx]
+    y_upper = y[upper_idx]
+    delta = abs(y_upper - y_lower)
+
+    # Estimate effective Reynolds number
+    du = abs(ux_max - ux_min)
+    delta_init = 1.0
+    nu = du * delta_init / re_init
+    re_new = du * delta / nu
+
+    # Plotting
+    fig, axs = plt.subplots(1, 3, figsize=(16, 9), sharey=True)
+    y_min, y_max = y[0], y[-1]
+
+    def draw_mixing_lines(ax, show_legend=False, delta=None, delta_theta=None):
+        ax.axhline(y_01, color='y', linestyle='--', linewidth=1, label='99% bounds' if show_legend else None)
+        ax.axhline(y_99, color='y', linestyle='--', linewidth=1)
+        ax.axhline(y_lower, color='k', linestyle='--', linewidth=1, label='Mixing layer bounds' if show_legend else None)
+        ax.axhline(y_upper, color='k', linestyle='--', linewidth=1)
+        ax.axhline(y_center, color='k', linestyle=':', linewidth=1, label='Center' if show_legend else None)
+        x_limits = ax.get_xlim()
+        ax.fill_betweenx(y=[y_lower, y_upper], x1=x_limits[0], x2=x_limits[1],
+                         color='gray', alpha=0.1, label='Mixing layer' if show_legend else None)
+                
+        y_low_t = y_center - 0.5 * delta_theta
+        y_up_t = y_center + 0.5 * delta_theta
+        ax.fill_betweenx(
+            y=[y_low_t, y_up_t],
+            x1=x_limits[0],
+            x2=x_limits[1],
+            color='blue',
+            alpha=0.08,
+            label='Momentum thickness' if show_legend else None
+        )
+
+        if show_legend:
+            # Position under legend (bottom-left of axis)
+            ax.annotate(
+                rf'$\delta ~= {delta:.3f}$',
+                xy=(0.75, 0.35),
+                xycoords='axes fraction',
+                fontsize=12,
+                backgroundcolor='white',
+                bbox=dict(boxstyle='round,pad=0.3', edgecolor='gray', facecolor='white')
+            )
+            ax.annotate(
+                rf'$\delta_\theta = {delta_theta:.3f}$',
+                xy=(0.75, 0.30),
+                xycoords='axes fraction',
+                fontsize=12,
+                backgroundcolor='white',
+                bbox=dict(boxstyle='round,pad=0.3', edgecolor='gray', facecolor='white')
+            )
+
+    # Compute momentum thickness δ_theta
+    u1 = ux_profile[-1]
+    u2 = ux_profile[ 0]
+    delta_theta = compute_momentum_thickness(y, ux_profile, u1, u2)
+    # Compute Reynolds based on momentum thickness
+    re_theta = du * delta_theta / nu
+
+    print_block("Mixing layer Reynolds analysis", [
+        ("du", f"{du:.4f}"),
+        ("nu (from Re_init)", f"{nu:.2e}"),
+        ("delta (gradient-based)", f"{delta:.4f}"),
+        ("delta_theta (momentum)", f"{delta_theta:.4f}"),
+        ("Re_delta", f"{re_new:.1f}"),
+        ("Re_delta_theta", f"{re_theta:.1f}")
+    ])
+
+    # Plot <u_x>
+    axs[0].plot(ux_profile, y, label=r'$\langle u_x \rangle$', color='tab:blue')
+    draw_mixing_lines(axs[0], show_legend=True, delta=delta, delta_theta=delta_theta)
+    axs[0].set_title(r'Profile $\langle u_x(y) \rangle$', fontsize=14)
+    axs[0].set_xlabel(r'$u_x$', fontsize=12)
+    axs[0].set_ylabel(r'$y$', fontsize=12)
+    axs[0].set_ylim(y_min, y_max)
+    axs[0].grid(True, linestyle='--', alpha=0.7)
+    axs[0].legend()
+
+    # Plot <u_y> and <u_z>
+    axs[1].plot(uy_profile, y, label=r'$\langle u_y \rangle$', color='tab:green')
+    axs[1].plot(uz_profile, y, label=r'$\langle u_z \rangle$', color='tab:orange')
+    draw_mixing_lines(axs[1], show_legend=False, delta=delta, delta_theta=delta_theta)
+    axs[1].set_title(r'Profiles $\langle u_y(y) \rangle$, $\langle u_z(y) \rangle$', fontsize=14)
+    axs[1].set_xlabel(r'$u_y$, $u_z$', fontsize=12)
+    axs[1].set_ylim(y_min, y_max)
+    axs[1].grid(True, linestyle='--', alpha=0.7)
+    axs[1].legend()
+
+    # Plot fluctuations u'_i = u_i(x_plot, z_plot) - <u_i>
+    axs[2].plot(ux_fluct, y, label=r"$u'_x$", color='tab:red')
+    axs[2].plot(uy_fluct, y, label=r"$u'_y$", color='tab:purple')
+    axs[2].plot(uz_fluct, y, label=r"$u'_z$", color='tab:brown')
+    draw_mixing_lines(axs[2], show_legend=False, delta=delta, delta_theta=delta_theta)
+    axs[2].set_title(r"Fluctuations $u'_i(y)$ at $x,z$", fontsize=14)
+    axs[2].set_xlabel(r"$u'_i$", fontsize=12)
+    axs[2].set_ylim(y_min, y_max)
+    axs[2].grid(True, linestyle='--', alpha=0.7)
+    axs[2].legend()
+
+    fig.suptitle(
+        rf"Mixing layer analysis at $x = {x_plot}$, $z = {z_plot}$, $t = {time:.1f}$",
+        fontsize=16
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+def plot_velocity_fluctuations_plan(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, direction='x'):
+    """
+    Plot velocity fluctuations in a plane orthogonal to the specified direction.
+    If direction = 'x', plot in (y,z)
+    If direction = 'y', plot in (x,z)
+    If direction = 'z', plot in (x,y)
+    """
+
+    if direction == 'x':
+        ix = np.argmin(np.abs(x - x_plot))
+        ux_plane = ux[ix, :, :]
+        uy_plane = uy[ix, :, :]
+        uz_plane = uz[ix, :, :]
+        ux_mean = np.mean(ux, axis=0)
+        uy_mean = np.mean(uy, axis=0)
+        uz_mean = np.mean(uz, axis=0)
+        coord1, coord2 = y, z
+        label1, label2 = 'y', 'z'
+    elif direction == 'y':
+        iy = np.argmin(np.abs(y - y_plot))
+        ux_plane = ux[:, iy, :]
+        uy_plane = uy[:, iy, :]
+        uz_plane = uz[:, iy, :]
+        ux_mean = np.mean(ux, axis=1)
+        uy_mean = np.mean(uy, axis=1)
+        uz_mean = np.mean(uz, axis=1)
+        coord1, coord2 = x, z
+        label1, label2 = 'x', 'z'
+    elif direction == 'z':
+        iz = np.argmin(np.abs(z - z_plot))
+        ux_plane = ux[:, :, iz]
+        uy_plane = uy[:, :, iz]
+        uz_plane = uz[:, :, iz]
+        ux_mean = np.mean(ux, axis=2)
+        uy_mean = np.mean(uy, axis=2)
+        uz_mean = np.mean(uz, axis=2)
+        coord1, coord2 = x, y
+        label1, label2 = 'x', 'y'
+    else:
+        raise ValueError("Direction must be 'x', 'y', or 'z'")
+
+    # Compute fluctuations
+    fluct_x = ux_plane - ux_mean
+    fluct_y = uy_plane - uy_mean
+    fluct_z = uz_plane - uz_mean
+
+    # Color scale
+    vabs = max(np.max(np.abs(fluct_x)), np.max(np.abs(fluct_y)), np.max(np.abs(fluct_z)))
+    vmin, vmax = -vabs, vabs
+
+    fig, axs = plt.subplots(1, 3, figsize=(16, 9))
+    cmap = 'seismic'
+
+    extent = [coord2.min(), coord2.max(), coord1.min(), coord1.max()]
+    im0 = axs[0].imshow(fluct_x, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+    axs[0].set_title(rf"Fluctuation $u'_x({label1},{label2})$")
+    axs[0].set_xlabel(f"{label2}")
+    axs[0].set_ylabel(f"{label1}")
+    fig.colorbar(im0, ax=axs[0])
+
+    im1 = axs[1].imshow(fluct_y, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+    axs[1].set_title(rf"Fluctuation $u'_y({label1},{label2})$")
+    axs[1].set_xlabel(f"{label2}")
+    axs[1].set_ylabel(f"{label1}")
+    fig.colorbar(im1, ax=axs[1])
+
+    im2 = axs[2].imshow(fluct_z, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+    axs[2].set_title(rf"Fluctuation $u'_z({label1},{label2})$")
+    axs[2].set_xlabel(f"{label2}")
+    axs[2].set_ylabel(f"{label1}")
+    fig.colorbar(im2, ax=axs[2])
+
+    fig.suptitle(
+        f"Velocity fluctuations in the {label1}-{label2} plane at time t = {time:.2f}",
+        fontsize=16
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.92])
+    plt.show()
+
+def plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=False):
+    """
+    Compute and plot the isotropic energy spectrum E(k) from a 3D FFT
+    of the velocity field. The energy is binned by the magnitude of 
+    the wavevector |k| and plotted on a log-log scale.
 
     Parameters:
-    -----------
-    nu_t : 2D numpy array
-        Turbulent viscosity in the y-z plane.
-    y, z : 1D numpy arrays
-        Coordinates in the y and z directions.
-    x : 1D numpy array
-        Coordinates in the x direction.
-    x_index : int
-        Index in the x direction.
-    time : float
-        Simulation time.
-    filename : str
-        Data file name.
-    png : bool
-        If True, saves the image as a PNG file.
+    - ux, uy, uz: 3D velocity field components (numpy arrays)
+    - x, y, z: grid coordinates (1D arrays)
+    - time: simulation time (float)
     """
 
-    plt.figure(figsize=(8, 6))
-    Y, Z = np.meshgrid(y, z, indexing='ij')
-    plt.contourf(Z, Y, nu_t, levels=20, cmap='viridis')
-    plt.colorbar(label='Turbulent Viscosity $\\nu_t$')
+    nx, ny, nz = len(x), len(y), len(z)
+    dx = x[1] - x[0]
+    dy = y[1] - y[0]
+    dz = z[1] - z[0]
 
-    plt.title(f'Turbulent Viscosity $\\nu_t$ for x = {x[x_index]:.2f} at t = {time:.2f}')
-    plt.xlabel('z')
-    plt.ylabel('y')
+    # Perform 3D FFT of each velocity component
+    uxf = np.fft.fftn(ux)
+    uyf = np.fft.fftn(uy)
+    uzf = np.fft.fftn(uz)
 
-    output_filename = f'./images/nu_t_{os.path.basename(filename).replace(".bin", "")}_x_{x_index}.png'
-    if png:
-        plt.savefig(output_filename)
-        print(f"Turbulent viscosity plot saved as {output_filename}")
+    # Compute spectral energy density
+    energy_spectral = 0.5 * (np.abs(uxf)**2 + np.abs(uyf)**2 + np.abs(uzf)**2)
+
+    # Create frequency grids
+    kx = np.fft.fftfreq(nx, dx) * 2 * np.pi
+    ky = np.fft.fftfreq(ny, dy) * 2 * np.pi
+    kz = np.fft.fftfreq(nz, dz) * 2 * np.pi
+    KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing='ij')
+
+    # Compute |k| magnitude
+    k_mag = np.sqrt(KX**2 + KY**2 + KZ**2).flatten()
+    energy_spectral = energy_spectral.flatten()
+
+    # Bin energy values by |k|
+    k_bins = np.linspace(0, k_mag.max(), 100)
+    k_centers = 0.5 * (k_bins[:-1] + k_bins[1:])
+    E_k = np.zeros_like(k_centers)
+
+    for i in range(len(k_bins) - 1):
+        mask = (k_mag >= k_bins[i]) & (k_mag < k_bins[i+1])
+        E_k[i] = np.sum(energy_spectral[mask])
+
+    # Plotting
+    plt.figure(figsize=(16, 9))
+    plt.loglog(k_centers, E_k, '-.', markersize=4, label=r"$E(k)$")
+    plt.title("Isotropic energy spectrum", fontsize=14)
+    plt.xlabel(r"Wavenumber $k = |\mathbf{k}|$", fontsize=12)
+    plt.ylabel(r"$E(k)$", fontsize=12)
+    plt.grid(True, which='both', linestyle=':', alpha=0.7)
+
+    # Add reference k^-5/3 slope
+    ref_k = np.array([k_centers[10], k_centers[40]])
+    ref_E = ref_k**(-5/3) * E_k[10] / (k_centers[10]**(-5/3))
+    plt.loglog(ref_k, ref_E, 'k--', label=r"$k^{-5/3}$")
+
+    if LES:
+        delta = (dx * dy * dz)**(1/3)
+        k_cutoff = np.pi / delta
+        lambda_cutoff = 2 * delta  # corresponding physical scale
+        plt.axvline(k_cutoff, color='red', linestyle='--', linewidth=1.5, label=r"$k_c = \pi / \Delta$")
+        plt.text(k_cutoff * 1.1, max(E_k) * 1e-2,
+                 f"LES cutoff: λ ≈ {lambda_cutoff:.3f}", color='red', fontsize=10)
+    
+    plt.legend(loc='lower left', frameon=True)
+    plt.tick_params(axis='both', which='both', direction='in', top=True, right=True)
+    plt.tight_layout()
+    plt.show()
+
+def analyze_turbulent_development(x, y, z, ux, uy, uz, time, LES=False):
+    """
+    Analyze turbulence development using mean TKE and enstrophy.
+    Compare to empirical thresholds to automatically assess turbulent state.
+    """
+
+    # Remove mean in x-direction (streamwise)
+    ux_fluct = ux - np.mean(ux, axis=0)
+    uy_fluct = uy - np.mean(uy, axis=0)
+    uz_fluct = uz - np.mean(uz, axis=0)
+
+    # Turbulent kinetic energy
+    tke = 0.5 * (ux_fluct**2 + uy_fluct**2 + uz_fluct**2)
+    mean_tke = np.mean(tke)
+
+    # Vorticity components (central gradients)
+    dx = x[1] - x[0]
+    dy = y[1] - y[0]
+    dz = z[1] - z[0]
+
+    dudy = np.gradient(ux, axis=1, edge_order=2) / dy
+    dudz = np.gradient(ux, axis=2, edge_order=2) / dz
+    dvdx = np.gradient(uy, axis=0, edge_order=2) / dx
+    dvdz = np.gradient(uy, axis=2, edge_order=2) / dz
+    dwdx = np.gradient(uz, axis=0, edge_order=2) / dx
+    dwdy = np.gradient(uz, axis=1, edge_order=2) / dy
+
+    wx = dwdy - dvdz
+    wy = dudz - dwdx
+    wz = dvdx - dudy
+
+    enstrophy = 0.5 * (wx**2 + wy**2 + wz**2)
+    mean_enstrophy = np.mean(enstrophy)
+
+    # Thresholds (adjustable)
+    TKE_THRESHOLD = 1e-2
+    ENSTROPHY_THRESHOLD = 1.0
+
+    block = [
+        ("Time", f"{time:.3f}"),
+        ("Mean TKE", f"{mean_tke:.4e}"),
+        ("Mean enstrophy", f"{mean_enstrophy:.4e}")
+    ]
+
+    if LES:
+        nut, delta = compute_smagorinsky_viscosity(x, y, z, ux, uy, uz)
+        nut_min = np.min(nut)
+        nut_max = np.max(nut)
+        nut_mean = np.mean(nut)
+        lambda_cutoff = 2 * delta
+
+        block += [
+            ("Smagorinsky nu_t min", f"{nut_min:.3e}"),
+            ("Smagorinsky nu_t max", f"{nut_max:.3e}"),
+            ("Smagorinsky nu_t mean", f"{nut_mean:.3e}"),
+            ("LES cutoff length scale", f"lambda = {lambda_cutoff:.4f}")
+        ]
+
+    print_block("Turbulence development analysis", block)
+
+    # Regime assessment remains outside for clarity
+    print(f"\n  Regime assessment         : ", end="")
+    if mean_tke > TKE_THRESHOLD and mean_enstrophy > ENSTROPHY_THRESHOLD:
+        print("TURBULENT")
+    elif mean_tke > 0.1 * TKE_THRESHOLD:
+        print("TRANSITIONAL")
     else:
-        plt.show()
-    plt.close()
+        print("LAMINAR or UNDERDEVELOPED")
+    print("-" * 48)
 
-def plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, epsilon, time, filename, png, eta):
+
+def compute_smagorinsky_viscosity(x, y, z, ux, uy, uz, Cs=0.17):
     """
-    Calculate and plot the Kolmogorov energy spectrum for a turbulent flow.
-
+    Compute the Smagorinsky eddy viscosity nu_t using local strain rates.
+    
     Parameters:
-    -----------
-    ux, uy, uz : 3D numpy arrays
-        The velocity components of the flow in x, y, and z directions.
-    x, y, z : 1D numpy arrays
-        The spatial grid points in each direction (x, y, z).
-    nx, ny, nz : int
-        The number of grid points in x, y, and z directions.
-    epsilon : float
-        The turbulent dissipation rate.
-    nu: dynamique viscosity
+        x, y, z : 1D grid coordinates
+        ux, uy, uz : 3D velocity fields
+        Cs : Smagorinsky constant (default: 0.17)
     
     Returns:
-    --------
-    None
-        Displays a log-log plot of the energy spectrum and the Kolmogorov -5/3 slope.
+        nut : 3D array of turbulent viscosity (same shape as ux)
+        delta : filter scale (constant)
     """
+    dx = x[1] - x[0]
+    dy = y[1] - y[0]
+    dz = z[1] - z[0]
+    delta = (dx * dy * dz) ** (1 / 3)
 
-    # Calculate the size of the domain in x, y, and z directions
-    Lx = x[-1] - x[0]
-    Ly = y[-1] - y[0]
-    Lz = z[-1] - z[0]
+    # Compute velocity gradients
+    dux_dx = np.gradient(ux, axis=0, edge_order=2) / dx
+    dux_dy = np.gradient(ux, axis=1, edge_order=2) / dy
+    dux_dz = np.gradient(ux, axis=2, edge_order=2) / dz
+    duy_dx = np.gradient(uy, axis=0, edge_order=2) / dx
+    duy_dy = np.gradient(uy, axis=1, edge_order=2) / dy
+    duy_dz = np.gradient(uy, axis=2, edge_order=2) / dz
+    duz_dx = np.gradient(uz, axis=0, edge_order=2) / dx
+    duz_dy = np.gradient(uz, axis=1, edge_order=2) / dy
+    duz_dz = np.gradient(uz, axis=2, edge_order=2) / dz
+
+    # Compute strain-rate magnitude |S|
+    S2 = (
+        2 * dux_dx**2 +
+        2 * duy_dy**2 +
+        2 * duz_dz**2 +
+        (dux_dy + duy_dx)**2 +
+        (dux_dz + duz_dx)**2 +
+        (duy_dz + duz_dy)**2
+    )
+    nut = (Cs * delta) ** 2 * np.sqrt(0.5 * S2)
+    return nut, delta
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description="Plot velocity profiles and turbulence statistics from CFD binary output."
+    )
+    parser.add_argument(
+        '--filename', '-fi',
+        nargs='*',
+        default=glob.glob("fields_??????.bin"),
+        help="Fichiers binaires à analyser (wildcards autorisés). Par défaut : fields_??????.bin"
+    )
+    parser.add_argument('--x', type=float, default=0.0, help="x coordinate for profile extraction")
+    parser.add_argument('--y', type=float, default=0.0, help="y coordinate for profile extraction")
+    parser.add_argument('--z', type=float, default=0.0, help="z coordinate for profile extraction")
+
+    parser.add_argument('--summary', '-s', action='store_true',
+    help="Print a summary of the field (filename, time, min/max of velocity and pressure)")
     
-    # Compute the grid spacing in each direction
-    dx = Lx / (nx - 1)
-    dy = Ly / (ny - 1)
-    dz = Lz / (nz - 1)
+    parser.add_argument('--plot_velocity_profiles', '-p',  action='store_true',
+            help="Display velocity profiles in i-direction (default x). You can change the direction with --direction option")
 
-    # Get spatial frequencies (wavenumbers) for each direction
-    kx = np.fft.fftfreq(nx, d=dx) * 2 * np.pi
-    ky = np.fft.fftfreq(ny, d=dy) * 2 * np.pi
-    kz = np.fft.fftfreq(nz, d=dz) * 2 * np.pi
+    parser.add_argument('--direction', choices=['x', 'y', 'z'], default='x',
+            help="Direction along which to extract the velocity profile (default: z)")
+
+    parser.add_argument('--mixing_layer', '-ml', type=float, metavar='RE_INIT',
+            help="Activate mixing layer mode (3-panel plot in the y-direction)")
+
+    parser.add_argument('--fluctuations', '-f', action='store_true',
+            help="Display velocity fluctuations u'_i in the (y,z) plane at given x")
+
+    parser.add_argument('--turbulence', '-t', action='store_true',
+            help="Display turbulence statistics and plot the energy spectrum")
+    parser.add_argument('--LES', action='store_true',
+            help="Enable LES mode to show expected spectral cutoff due to Smagorinsky model")
+
+    args = parser.parse_args()
+ 
+    file_list = list(itertools.chain.from_iterable(glob.glob(f) for f in args.filename))
+    file_list = sorted(set(file_list))  # dédoublonner + trier
+
+    if not file_list:
+        print("Aucun fichier trouvé pour les motifs donnés.")
+        return 1
+
+    for fname in file_list:
+        print(f"\n========= Analyse de {fname} =========")
+        time, x, y, z, ux, uy, uz, pp = read_fields(fname)
+        if args.summary:
+            block = [
+                ("File", fname),
+                ("Time", f"{time:.1f}"),
+                ("nx, ny, nz", f"{len(x)}, {len(y)}, {len(z)}"),
+                ("ux min/max", f"{ux.min():.3e} / {ux.max():.3e} "),
+                ("uy min/max", f"{uy.min():.3e} / {uy.max():.3e} "),
+                ("uz min/max", f"{uz.min():.3e} / {uz.max():.3e} "),
+                ("Pressure min", f"{pp.min():.3e}"),
+                ("Pressure max", f"{pp.max():.3e}")
+            ]
+            print_block("Field summary", block)
+
     
-    # Create a 3D grid of wavenumbers
-    KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing='ij')
-    k_magnitude = np.sqrt(KX**2 + KY**2 + KZ**2)  # Magnitude of the wavenumber vector
+        if args.plot_velocity_profiles:
+            plot_velocity_profiles(time, x, y, z, ux, uy, uz, args.x, args.y, args.z, args.direction)
     
-    # Perform the Fourier transform on each velocity component
-    u_hat = np.fft.fftn(ux) / (nx*ny*nz)
-    v_hat = np.fft.fftn(uy) / (nx*ny*nz)
-    w_hat = np.fft.fftn(uz) / (nx*ny*nz)
+        if args.mixing_layer:
+            plot_mixing_layer_profiles(x, y, z, ux, uy, uz, args.x, args.z, time, re_init=args.mixing_layer)
     
-    # Compute the energy spectrum: E(k) = 1/2 * (|u_hat|^2 + |v_hat|^2 + |w_hat|^2)
-    energy_spectrum_3d = 0.5 * (np.abs(u_hat)**2 + np.abs(v_hat)**2 + np.abs(w_hat)**2)
-    
-    # Convert the 3D spectrum to a 1D spectrum using spherical averaging
-    k_bins = np.linspace(0, np.max(k_magnitude), 50)  # Define bins for wavenumbers
-    E_k = np.zeros_like(k_bins[:-1])  # Initialize array to store averaged energy per bin
-    counts = np.zeros_like(E_k)  # To count how many points contribute to each bin
-
-    # Average the energy spectrum in each wavenumber bin
-    for i in range(len(k_bins) - 1):
-        k_min = k_bins[i]
-        k_max = k_bins[i+1]
-        
-        # Select indices where the magnitude of k is within the bin range
-        indices = (k_magnitude >= k_min) & (k_magnitude < k_max)
-        
-        # Compute the mean energy in this bin
-        E_k[i] = np.sum(energy_spectrum_3d[indices])
-        counts[i] = np.sum(indices)
-    
-    # Normalize by the number of points in each bin
-    non_zero_counts = counts > 0  # Avoid division by zero
-    E_k[non_zero_counts] /= counts[non_zero_counts]
-
-    # Filter out any remaining zero or invalid values
-    valid_bins = E_k > 0
-    k_mid = 0.5 * (k_bins[:-1] + k_bins[1:])  # Midpoint of the wavenumber bins
-    k_mid = k_mid[valid_bins]
-    E_k = E_k[valid_bins]
-
-    # Plot the energy spectrum
-    plt.figure(figsize=(8, 6))
-    plt.loglog(k_mid, E_k, label='Energy spectrum', color='b')
-
-    # Plot the Kolmogorov -5/3 law (E(k) ~ k^(-5/3))
-    kolmogorov_slope = k_mid**(-5/3)
-    kolmogorov_slope *= (E_k[1] / kolmogorov_slope[1])  # Normalize the curve for visualization
-    plt.loglog(k_mid, kolmogorov_slope, 'r--', label=r'Kolmogorov $k^{-5/3}$ law')
-
-    # Highlight the Kolmogorov scale
-    plt.axvline(x=1/eta, color='g', linestyle='--', label=f'Kolmogorov scale ($\eta = {eta:.2e}$)')
-    
-    # Plot settings    
-    plt.xlabel('Wave number $k$')
-    plt.ylabel('Energy $E(k)$')
-    plt.title(f'Kolmogorov Energy Spectrum at time = {time:.1f}')
-    plt.grid(True, which="both", ls="--")
-    plt.legend()
-
-    output_dir = './images/'
-    output_filename = os.path.join(output_dir, f'kolmogorov_spectrum_{os.path.basename(filename).replace(".bin", "")}.png')
-    
-    if png:
-        plt.savefig(output_filename)
-        print(f"Kolmogorov spectrum saved as {output_filename}")
-    else:
-        plt.show()
-    
-    # Close the plot to free memory
-    plt.close()
-
-def set_axis_ticks(ax, fluct_data, axis='z', n=5, round_value=1):
-    """
-    Set axis ticks and formatting for a 3D axis.
-
-    Parameters:
-    - ax: The axis to modify (3D axes like x, y, or z).
-    - fluct_data: The fluctuation data used to determine min and max values for the axis.
-    - axis: The axis to which the ticks are applied ('x', 'y', or 'z'). Default is 'z'.
-    - n: Number of ticks. Default is 5.
-    - round_value: The decimal place for rounding the step. Default is 1 (i.e., round to one decimal).
-    """
-    min_val, max_val = np.min(fluct_data), np.max(fluct_data)
-    step = np.round((max_val - min_val) / n, round_value)
-    if step == 0.0:
-        step = 0.1  # Default to 0.1 if the step is too small
-
-    if axis == 'z':
-        ax.set_zticks(np.arange(min_val, max_val + step, step))
-        ax.zaxis.set_major_formatter(FormatStrFormatter(f'%.{round_value}f'))
-    elif axis == 'x':
-        ax.set_xticks(np.arange(min_val, max_val + step, step))
-        ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{round_value}f'))
-    elif axis == 'y':
-        ax.set_yticks(np.arange(min_val, max_val + step, step))
-        ax.yaxis.set_major_formatter(FormatStrFormatter(f'%.{round_value}f'))
-
-
-def remove_images(filenames):
-    """Remove existing image files."""
-    for filename in filenames:
-        if os.path.exists(filename):
-            os.remove(filename)
-            print(f"Removed {filename}")
-
-def main(args):
-
-    # Remove existing images if the option is set
-    if args.remove:
-        velocity_files = glob.glob('./images/velocity_profile_fields_??????.png')
-        fluctuation_files = glob.glob('./images/fluctuations_fields_??????.png')
-        kolmogorov_files = glob.glob('./images/kolmogorov_spectrum_fields_??????.png')
-        remove_images(velocity_files + fluctuation_files + kolmogorov_files)
-
-    nu = 1. / args.reynolds
-    print(f"Dynamic viscosity nu = {nu:.4e}")
-
-    for filename in args.filenames:
-        print(f"Processing of the file {filename}")
-        # Read the data
-        time, nx, ny, nz, x, y, z, ux, uy, uz, pp = read_fields(filename)
-        dx = x[1] - x[0]
-        dy = y[1] - y[0]
-        dz = z[1] - z[0]
-
-        # Compute average velocity profiles
-        avg_ux, avg_uy, avg_uz = compute_average_velocity(ux, uy, uz, 
-                args.x_index)
-        # Compute turbulent kinetic energy
-        tke = compute_tke(ux, uy, uz)
-
-        print(f'TKE for time = {time:.3f}: {tke:.6f}')
-        
-        if (args.mixing_layer):
-            # Compute mixing layer limits
-            min_max_limits, gradient_limits = compute_mix_layer_limits(
-                avg_ux, y, args.min_max_threshold, 
-                args.gradient_threshold_factor)
-        else:
-            min_max_limits = None
-            gradient_limits = None
-
-            # Compute jet limits if requested
-        if args.jet:
-            jet_limits = compute_jet_limits(avg_ux, y)
-        else:
-            jet_limits = None
-
-        # Plot velocity profiles
-        if args.velocities:
-            plot_velocity_profiles(y, avg_ux, avg_uy, avg_uz, nu, 
-                    min_max_limits, gradient_limits, jet_limits, x, args.x_index, time,
-                    filename, args.png)
-
-        # Plot fluctuations if required
         if args.fluctuations:
-            ux_fluct, uy_fluct, uz_fluct = compute_fluctuations(
-                    ux, uy, uz, avg_ux, avg_uy, avg_uz, args.x_index)
-            plot_fluctuations(ux_fluct, uy_fluct, uz_fluct, x, y, z, 
-                    args.x_index, time, filename, args.png)
-    
-        if args.nut:
-            nu_t = compute_nu_t(ux, uy, uz, dx, dy, dz, args.cs)
-            plot_nu_t(nu_t[args.x_index, :, :], y, z, x, args.x_index, time, filename, args.png)
+            plot_velocity_fluctuations_plan(
+                    x, y, z, ux, uy, uz,
+                    args.x, args.y, args.z,
+                    time, direction=args.direction
+                    )
 
-        if args.kolmogorov:
-            epsilon = compute_dissipation_rate(ux, uy, uz, dx, dy, dz)
-            eta, tau_eta, v_eta = compute_kolmogorov_scales(epsilon, nu)
-            print(f"Dissipation rate epsilon = {epsilon:.4e}")
-            print(f"Kolmogorov scale eta = {eta:.4e}")
-            # Plot Kolmogorov energy spectrum
-            plot_kolmogorov_spectrum(ux, uy, uz, x, y, z, nx, ny, nz, 
-                    epsilon, time, filename, args.png, eta)
+        if args.turbulence:
+            plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=args.LES)
+            analyze_turbulent_development(x, y, z, ux, uy, uz, time, args.LES)
 
     return 0
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CFD post-processing script",
-            epilog="Example command: python3 fields_analyser.py fields_000000.bin fields_001000.bin fields_002000.bin -re 2500 -x 128 -fl -r")
-    
-    default_filenames = glob.glob("fields_[0-9][0-9][0-9][0-9][0-9][0-9].bin")
-    default_filenames_sorted = sorted(default_filenames, key=lambda x: int(x.split('_')[1].split('.')[0]))
-    default_filenames = default_filenames_sorted
-    parser.add_argument("--filenames", '-f', nargs='+', type=str, default=default_filenames,
-                        help="List of input binary files containing the CFD data")
-    parser.add_argument("--x_index", '-xi', type=int, default=0, help="Index in the x direction to calculate profiles")
-    parser.add_argument("--reynolds", '-re', type=float, default=1000., help="Reynolds number (nu=1/re)")
-    parser.add_argument('-cs', type=float, default=.1, help="Smagorinsky constant")
-    
-    # Ajout des arguments booléens
-    parser.add_argument("--velocities", '-v', action='store_true', help="Include velocities in the plots")
-    parser.add_argument("--fluctuations", '-fl', action='store_true', help="Include fluctuations in the plots")
-    parser.add_argument("--nut", '-nt', action='store_true', help="Calculate and plot turbulent viscosity nu_t")
-    parser.add_argument("--kolmogorov", '-k', action='store_true', help="Include Kolmogorov scale process and plot")
-    parser.add_argument("--mixing_layer", '-ml', action='store_true', help="Compute and plot mixing layer limits")
-    parser.add_argument("--jet", '-j', action='store_true', help="Compute and plot jet limits")
-    
-    parser.add_argument("--min_max_threshold", type=float, default=0.99, help="Threshold for min-max method (default=0.1)")
-    parser.add_argument("--gradient_threshold_factor", type=float, default=0.05, help="Threshold factor for gradient method (default=0.5)")
-    parser.add_argument("--remove", '-r', action='store_true', help='Remove existing images')
-    parser.add_argument('-png', action='store_true', help='Generate PNG plots in ./images directory')
 
-    # Analyse des arguments
-    args = parser.parse_args()
-
-    # Vérification de la condition
-    if not (args.velocities or args.fluctuations or args.kolmogorov):
-        parser.error("At least one of the arguments --velocities (-v), --fluctuations (-fl), or --kolmogorov (-k) must be specified.")
-
-    # Appel de la fonction principale
-    err = main(args)
-
-    # Fin d'exécution
-    sys.exit(err)
+    err = main()
+    sys.exit(0)

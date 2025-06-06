@@ -47,7 +47,7 @@ program osinco3d
   end if
   if (ici == 2 .or. ici == 3) then
      call add_turbulent_init(ux, uy, uz, &
-          nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z)
+         nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, typesim)
   end if
   if (iin == 1) then
      call calcul_u_base(u_base, ux(1,:,kpro), dy)
@@ -89,7 +89,7 @@ program osinco3d
        uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
   call write_all_data(ux, uy, uz, rotx, roty, rotz, &
        q_criterion, pp, phi, nu_t, numx, nscr, iles)
-  call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles)
+  call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles, time)
   print *, ""
   print *, "Do you want to start the loop? (yes/no)"
   read(*, '(A3)') response
@@ -160,7 +160,7 @@ program osinco3d
              time, "outputs/solution_xz.dat")
         call write_all_data(ux, uy, uz, rotx, roty, rotz, &
              q_criterion, pp, phi, nu_t, numx, nscr, iles)
-        call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles)
+        call write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, numx, nscr, iles, time)
 
         if (nscr == 1) then
            call visu(phi(:,:,kpro), x, y, nx, ny, num)

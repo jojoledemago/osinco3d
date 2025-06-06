@@ -13,7 +13,6 @@ contains
     real(kind=8), intent(in) :: dy
 
     call dery1D(u_base, u, dy)
-    call normalize1D(u_base, 0.d0)
 
     return
   end subroutine calcul_u_base
@@ -31,12 +30,13 @@ contains
     real(kind=8), intent(in) :: base
     real(kind=8), intent(inout) :: f(:)
     real(kind=8) :: max_val, min_val, range_val
+    real(kind=8), parameter :: epsilon = 1.0d-12
 
     max_val = maxval(f)
     min_val = minval(f)
     range_val = max_val - min_val
 
-    if (range_val == 0.d0) then
+    if (abs(range_val) < epsilon) then
        f = base
     else
        f = base + (1.d0 - base) * (f - min_val) / range_val
@@ -207,6 +207,7 @@ contains
 
   end subroutine compute_cfl
 
+
   subroutine calcul_cpu_time(go_start, start_time, end_time, it, nt, &
        sum_elapsed_time)
     integer, intent(in) :: it, nt
@@ -219,13 +220,19 @@ contains
     elapsed_time = end_time - start_time
     sum_elapsed_time = sum_elapsed_time + elapsed_time
     time_since_start = end_time - go_start
-    remaining_it = nt - it
-    mean_elapsed_time = sum_elapsed_time / real(it, kind=8)
-    remaining_cpu_time = mean_elapsed_time * &
-         real(remaining_it, kind=8)
 
-    remaining_cpu_hm = seconds_to_hm(int(remaining_cpu_time))
-    time_since_start_hm = seconds_to_hm(int(time_since_start))
+    remaining_it = max(0, nt - it)
+
+    if (it > 0) then
+       mean_elapsed_time = sum_elapsed_time / real(it, kind=8)
+    else
+       mean_elapsed_time = 0.d0
+    end if
+
+    remaining_cpu_time = mean_elapsed_time * real(remaining_it, kind=8)
+
+    remaining_cpu_hm     = seconds_to_hm(int(remaining_cpu_time))
+    time_since_start_hm  = seconds_to_hm(int(time_since_start))
 
     call print_cpu_time(elapsed_time, remaining_cpu_hm, time_since_start_hm, mean_elapsed_time)
 

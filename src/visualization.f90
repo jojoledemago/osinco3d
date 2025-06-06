@@ -273,12 +273,13 @@ contains
     return
   end subroutine write_all_data
 
-  subroutine write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, num, nscr, iles)
+  subroutine write_xdmf(nx, ny, nz, dx, dy, dz, x0, y0, z0, num, nscr, iles, time)
     implicit none
     integer, intent(in) :: nx, ny, nz
     integer, intent(inout) ::  num, nscr, iles
     real(kind=8), intent(in) :: dx, dy, dz
     real(kind=8), intent(in) :: x0, y0, z0
+    real(kind=8), intent(in) :: time
     integer :: iunit, ios
     character(len=100) :: binaryname, filename
 
@@ -304,6 +305,7 @@ contains
     write(iunit, '(A)') '</DataItem>'
     write(iunit, '(A)') '</Geometry>'
     write(iunit, '(A,I0,A)') '<Grid Name="', num, '" GridType="Uniform">'
+    write(iunit, '(A,F25.12,A)') '<Time Value="', time, '"/>'
     write(iunit, '(A)') '<Topology Reference="/Xdmf/Domain/Topology[1]"/>'
     write(iunit, '(A)') '<Geometry Reference="/Xdmf/Domain/Geometry[1]"/>'
 

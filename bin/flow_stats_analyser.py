@@ -4,6 +4,7 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import os
 
 def read_stats(filepath):
@@ -20,6 +21,9 @@ def read_stats(filepath):
     data = np.loadtxt(filepath)
     return data
 
+def scientific_tick_format(x, _):
+    return f"{x:.1e}".replace("e", r" × 10^{") + "}"
+
 def plot_energy_dissipation(time, E_k, epsilon_t, epsilon):
     """
     Plot kinetic energy on the left y-axis, and dissipation terms on the right y-axis.
@@ -27,7 +31,7 @@ def plot_energy_dissipation(time, E_k, epsilon_t, epsilon):
     """
 
     # Compute -d(E_k)/dt numerically
-    dEk_dt_numeric = -np.gradient(E_k, time)
+    dEk_dt_numeric = -np.gradient(E_k, time, edge_order=2)
 
     fig, ax1 = plt.subplots(figsize=(16, 9))
 
@@ -36,6 +40,7 @@ def plot_energy_dissipation(time, E_k, epsilon_t, epsilon):
     ax1.set_ylabel("Kinetic Energy $E_k$", color='tab:blue')
     l1 = ax1.plot(time, E_k, color='tab:blue', label="Kinetic Energy $E_k$")
     ax1.tick_params(axis='y', labelcolor='tab:blue')
+    ax1.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
     ax1.grid(True, linestyle='--', alpha=0.5)
 
     # Right Y-axis: dissipation
@@ -45,11 +50,12 @@ def plot_energy_dissipation(time, E_k, epsilon_t, epsilon):
     l3 = ax2.plot(time, dEk_dt_numeric, color='gray', linestyle=':', label=r"Numerical $-dE_k/dt$")
     l4 = ax2.plot(time, epsilon, color='tab:green', linestyle='--', label=r"Viscous dissipation $\varepsilon$")
     ax2.tick_params(axis='y', labelcolor='tab:red')
+    ax2.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
 
     # Combine legends
     lines = l1 + l2 + l3 + l4
     labels = [line.get_label() for line in lines]
-    ax1.legend(lines, labels, loc='upper right')
+    ax1.legend(lines, labels, loc='upper left')
 
     plt.title("Kinetic energy and dissipation over time")
     fig.tight_layout()
@@ -100,9 +106,16 @@ def main():
         default=None,
         help="Initial Reynolds number (optional, used in diagnostic)"
     )
+    parser.add_argument(
+            "-f", "--file",
+            type=str,
+            default="outputs/stats.dat",
+            help="Chemin vers le fichier de statistiques CFD (par défaut: outputs/stats.dat)"
+            )
     args = parser.parse_args()
 
-    stats_file = "outputs/stats.dat"
+    stats_file = args.file
+
     try:
         data = read_stats(stats_file)
     except Exception as e:

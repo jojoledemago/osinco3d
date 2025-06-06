@@ -219,7 +219,7 @@ contains
     u2 = u1 * ratio
     phi1 = 1.d0
     phi2 = 0.d0
-    theta_o = 1./20. * l0
+    theta_o = 1./30. * l0
     t1 = 0.5d0 * (u1 + u2) 
     t2 = 0.5d0 * (u1 - u2) 
     t3 = l0 / (4.d0 * theta_o)
@@ -399,7 +399,7 @@ contains
 
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
     real(kind=8) :: A, x_disturb
-    real(kind=8) :: sigma, pi
+    real(kind=8) :: pi
     integer :: i, j, k, kx
 
     print *, "* Condition Initiale for a Mixing Layer simulation"
@@ -407,20 +407,18 @@ contains
     pi = acos(-1.d0)
     u2 = u0 / (1.d0 - ratio)
     u1 = u2 * ratio
-    sigma = 1.d0 / 1.d0 * l0
-    theta_o = 1.d0 / (5.d0 * l0)
+    theta_o = 1.d0 / (30.d0 * l0)
     t1 = 0.5d0 * (u2 + u1) 
     t2 = 0.5d0 * (u1 - u2)
     do k = 1, nz
        do j = 1, ny
           do i = 1, nx
-             t3 = 2.d0 * y(j) / sigma
-             t4 = 2.d0 * y(j) / theta_o
+             t3 = y(j) * log(2.d0) / (2.0d0 * theta_o)
              ux(i,j,k) = x(i) * 0.d0 + t1 - t2 * tanh(t3)
              uy(i,j,k) = y(j) * 0.d0
              uz(i,j,k) = z(k) * 0.d0
              if (nscr == 1) then
-                phi(i,j,k) = 0.5d0 - 0.5d0 * tanh(t4)
+                phi(i,j,k) = 0.5d0 - 0.5d0 * tanh(t3)
              end if
           end do
        end do
@@ -506,7 +504,8 @@ contains
   end subroutine set_initialization_type
 
   subroutine add_turbulent_init(ux, uy, uz, &
-       nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z)
+       nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, &
+     typesim)
     !> Add noise initialization to the velocity components.
     !> 
     !> INPUT:
@@ -518,13 +517,14 @@ contains
     !> init_noise_x : Intensity of the initialization noise
     !> init_noise_y : Intensity of the initialization noise
     !> init_noise_z : Intensity of the initialization noise
+    !> typesim      : Type of simulation for normalistaion of u_base
     !> OUTPUT:
     !> ux         : X-component of velocity field with noise
     !> uy         : Y-component of velocity field with noise 
     !> uz         : Z-component of velocity field with noise
     real(kind=8), intent(inout) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(in) :: dy, u0, init_noise_x, init_noise_y, init_noise_z
-    integer, intent(in) :: nx, ny, nz
+    integer, intent(in) :: nx, ny, nz, typesim
     real(kind=8), dimension(nx) :: ux_noise 
     real(kind=8), dimension(nx) :: uy_noise
     real(kind=8), dimension(nx) :: uz_noise
@@ -533,6 +533,11 @@ contains
     integer :: i, j, k
 
     call calcul_u_base(u_base, ux(1,:,1), dy)
+    if (typesim == 5) then
+        call normalize1D(u_base, 0.0d0)
+    else 
+        call normalize1D(u_base, -1.d0)
+    end if
     if (init_noise_x > 0.d0) then
        call print_noise_gene("Ux")
     end if

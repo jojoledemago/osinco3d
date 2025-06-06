@@ -266,22 +266,22 @@ contains
 
     do k = 1, nz
        do j = 1, ny
-             ! Estimate convective velocity coefficient cx depending on method
-             if (met == 1) then
-                cx = u0 * dt * udx
-             else if (met == 2) then
-                u_mean = 0.5d0 * (ux(nx-2,j,k) + ux(nx-1,j,k))
-                cx = u_mean * dt * udx
-             else if (met == 3) then
-                cx = ux(nx-1,j,k) * dt * udx
-             else
-                cx = u0 * dt * udx
-             end if
+          ! Estimate convective velocity coefficient cx depending on method
+          if (met == 1) then
+             cx = u0 * dt * udx
+          else if (met == 2) then
+             u_mean = 0.5d0 * (ux(nx-2,j,k) + ux(nx-1,j,k))
+             cx = u_mean * dt * udx
+          else if (met == 3) then
+             cx = ux(nx-1,j,k) * dt * udx
+          else
+             cx = u0 * dt * udx
+          end if
 
-             ! Orlanski convective update (1st-order)
-             bux(j,k) = ux(nx,j,k) - cx * (ux(nx,j,k) - ux(nx-1,j,k))
-             buy(j,k) = uy(nx,j,k) - cx * (uy(nx,j,k) - uy(nx-1,j,k))
-             buz(j,k) = uz(nx,j,k) - cx * (uz(nx,j,k) - uz(nx-1,j,k))
+          ! Orlanski convective update (1st-order)
+          bux(j,k) = ux(nx,j,k) - cx * (ux(nx,j,k) - ux(nx-1,j,k))
+          buy(j,k) = uy(nx,j,k) - cx * (uy(nx,j,k) - uy(nx-1,j,k))
+          buz(j,k) = uz(nx,j,k) - cx * (uz(nx,j,k) - uz(nx-1,j,k))
        end do
     end do
 

@@ -11,7 +11,7 @@ LIBS    = -lfftw3 -lm
 #===============================================================================
 SRCDIR     ?= ./
 OBJDIR     ?= $(SRCDIR)/build
-EXEDIR     ?= $(SRCDIR)/../bin
+EXEDIR     ?= $(SRCDIR)/bin
 EXECUTABLE = $(EXEDIR)/osinco3d.app
 
 #===============================================================================
@@ -22,6 +22,7 @@ SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/noise_mod.f90 \
           $(SRCDIR)/boundary_conditions.f90 \
           $(SRCDIR)/poisson.f90 \
+          $(SRCDIR)/poisson_multigrid.f90 \
           $(SRCDIR)/initialization.f90 \
           $(SRCDIR)/IOfunctions.f90 \
           $(SRCDIR)/utils.f90 \

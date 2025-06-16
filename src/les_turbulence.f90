@@ -23,50 +23,68 @@ contains
     !> OUTPUT:
     !> nu_t(nx, ny, nz)  : Calculated sub-grid scale turbulent viscosity
 
-    ! Define input and output variables
-    real(kind=8), dimension(:,:,:), intent(out) :: nu_t
+    implicit none
+
+    ! Input arrays
     real(kind=8), dimension(:,:,:), intent(in) :: ux, uy, uz
     real(kind=8), intent(in) :: dx, dy, dz, cs, delta
 
-    integer :: nx, ny, nz
-    real(kind=8), allocatable, dimension(:,:,:) :: duxdx, duxdy, duxdz
-    real(kind=8), allocatable, dimension(:,:,:) :: duydx, duydy, duydz
-    real(kind=8), allocatable, dimension(:,:,:) :: duzdx, duzdy, duzdz
-    real(kind=8), allocatable, dimension(:,:,:) :: sij
+    ! Output array
+    real(kind=8), dimension(:,:,:), intent(out) :: nu_t
+
+    ! Local variables
+    integer :: i, j, k, nx, ny, nz
+    real(kind=8), allocatable :: duxdx(:,:,:), duxdy(:,:,:), duxdz(:,:,:)
+    real(kind=8), allocatable :: duydx(:,:,:), duydy(:,:,:), duydz(:,:,:)
+    real(kind=8), allocatable :: duzdx(:,:,:), duzdy(:,:,:), duzdz(:,:,:)
+    real(kind=8) :: s11, s22, s33, s12, s13, s23, S_mag
     real(kind=8) :: stats(6)
 
-    ! Grid dimensions
+    ! Get dimensions
     nx = size(ux, 1)
     ny = size(ux, 2)
     nz = size(ux, 3)
 
-    ! Allocate arrays for partial derivatives
+    ! Allocate temporary arrays
     allocate(duxdx(nx,ny,nz), duxdy(nx,ny,nz), duxdz(nx,ny,nz))
     allocate(duydx(nx,ny,nz), duydy(nx,ny,nz), duydz(nx,ny,nz))
     allocate(duzdx(nx,ny,nz), duzdy(nx,ny,nz), duzdz(nx,ny,nz))
-    allocate(sij(nx,ny,nz))
 
-    ! Compute the partial derivatives of ux
+    ! Derivatives of ux
     call derxi(duxdx, ux, dx)
     call deryp(duxdy, ux, dy)
     call derzp(duxdz, ux, dz)
 
-    ! Compute the partial derivatives of uy
+    ! Derivatives of uy
     call derxp(duydx, uy, dx)
     call deryi(duydy, uy, dy)
     call derzp(duydz, uy, dz)
 
-    ! Compute the partial derivatives of uz
+    ! Derivatives of uz
     call derxp(duzdx, uz, dx)
     call deryp(duzdy, uz, dy)
     call derzi(duzdz, uz, dz)
 
-    ! Calculate the deformation rate tensor Sij
-    sij = sqrt(2.0 * (duxdx**2 + duydy**2 + duzdz**2 + &
-         0.5 * ((duxdy + duydx)**2 + (duxdz + duzdx)**2 + (duydz + duzdy)**2)))
+    ! Compute turbulent viscosity
+    do k = 1, nz
+       do j = 1, ny
+          do i = 1, nx
+             ! Symmetric strain rate tensor components
+             s11 = duxdx(i,j,k)
+             s22 = duydy(i,j,k)
+             s33 = duzdz(i,j,k)
+             s12 = 0.5d0 * (duxdy(i,j,k) + duydx(i,j,k))
+             s13 = 0.5d0 * (duxdz(i,j,k) + duzdx(i,j,k))
+             s23 = 0.5d0 * (duydz(i,j,k) + duzdy(i,j,k))
 
-    ! Compute the sub-grid scale turbulent viscosity nu_t
-    nu_t = (cs * delta)**2.d0 * sij
+             ! Magnitude of strain rate tensor |S| = sqrt(2 * S_ij * S_ij)
+             S_mag = sqrt(2.0d0 * (s11**2 + s22**2 + s33**2 + 2.0d0 * (s12**2 + s13**2 + s23**2)))
+
+             ! Smagorinsky viscosity
+             nu_t(i,j,k) = (cs * delta)**2 * S_mag
+          end do
+       end do
+    end do
     stats = function_stats(nu_t, nx, ny, nz)
     call print_nu_t_statistics(stats)
 
@@ -74,9 +92,7 @@ contains
     deallocate(duxdx, duxdy, duxdz)
     deallocate(duydx, duydy, duydz)
     deallocate(duzdx, duzdy, duzdz)
-    deallocate(sij)
 
-    return
   end subroutine calculate_nu_t
 
   subroutine calculate_tau_ij(tau_ij, ux, uy, uz, dx, dy, dz, nu_t)

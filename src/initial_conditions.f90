@@ -397,6 +397,7 @@ contains
     real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
     integer, intent(in) :: nx, ny, nz, nscr, ici
 
+    real(kind=8), parameter :: tiny_value = 1.d-12
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
     real(kind=8) :: A, x_disturb
     real(kind=8) :: pi
@@ -405,9 +406,14 @@ contains
     print *, "* Condition Initiale for a Mixing Layer simulation"
 
     pi = acos(-1.d0)
-    u2 = u0 / (1.d0 - ratio)
-    u1 = u2 * ratio
-    theta_o = 1.d0 / (30.d0 * l0)
+    if (ratio < tiny_value) then
+       u2 = u0
+       u1 = 0.d0
+    else
+       u2 = u0 / (1.d0 - ratio)
+       u1 = u2 * ratio
+    end if
+    theta_o = 1.d0 / (13.d0 * l0)
     t1 = 0.5d0 * (u2 + u1) 
     t2 = 0.5d0 * (u1 - u2)
     do k = 1, nz
@@ -505,7 +511,7 @@ contains
 
   subroutine add_turbulent_init(ux, uy, uz, &
        nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, &
-     typesim)
+       typesim)
     !> Add noise initialization to the velocity components.
     !> 
     !> INPUT:
@@ -534,9 +540,9 @@ contains
 
     call calcul_u_base(u_base, ux(1,:,1), dy)
     if (typesim == 5) then
-        call normalize1D(u_base, 0.0d0)
+       call normalize1D(u_base, 0.0d0)
     else 
-        call normalize1D(u_base, -1.d0)
+       call normalize1D(u_base, -1.d0)
     end if
     if (init_noise_x > 0.d0) then
        call print_noise_gene("Ux")
@@ -551,9 +557,9 @@ contains
     do k = 1, nz
        k0 = 10.d0
        s = 11.d0 / 3.d0
-       call noise_generator_1D(nx, k0, s, ux_noise)
-       call noise_generator_1D(nx, k0, s, uy_noise)
-       call noise_generator_1D(nx, k0, s, uz_noise)
+       call noise_generator_1D(nx, k0, s, ux_noise, 12345)
+       call noise_generator_1D(nx, k0, s, uy_noise, 54321)
+       call noise_generator_1D(nx, k0, s, uz_noise, 98765)
        call normalize1D(ux_noise, -1.0d0)
        call normalize1D(uy_noise, -1.0d0)
        call normalize1D(uz_noise, -1.0d0)

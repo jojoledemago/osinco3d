@@ -1,16 +1,89 @@
 #!/bin/python3
 # encoding: utf-8
 
+import os
 import sys
 import glob
 import argparse
 import itertools
+from PIL import Image
+import subprocess
+from collections import defaultdict
 
-import matplotlib.pyplot as plt
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from matplotlib.table import Table
+import matplotlib.pyplot as plt
+
+def generate_latex_figure_pdf(image_folder="png", output_dir="pdf", field_time_map=None):
+    images = sorted([f for f in os.listdir(image_folder) if f.endswith(".png")])
+    if not images:
+        print("Warning: No PNG files found in ./png.")
+        return
+
+    os.makedirs(output_dir, exist_ok=True)
+    output_tex = os.path.join(output_dir, "figures.tex")
+
+    grouped = defaultdict(list)
+    for fname in images:
+        key = fname.split('_')[0]
+        grouped[key].append(fname)
+
+    with open(output_tex, "w") as f:
+        f.write(r"""\documentclass[a4paper,10pt]{article}
+                    \usepackage{graphicx}
+                    \usepackage{caption}
+                    \usepackage{subcaption}
+                    \usepackage[margin=1.5cm]{geometry}
+                    \usepackage{float}
+                    \usepackage{parskip}
+                    \begin{document}
+                    """)
+        for key, fnames in grouped.items():
+            # Try to extract time from filename if map available
+            time_str = ""
+            if key in field_time_map:
+                time_str = f" at t = {field_time_map[key]:.0f}"
+            f.write(f"\\section*{{Figures for field {key}{time_str}}}\n")
+            for i, fname in enumerate(fnames):
+                if i % 2 == 0:
+                    f.write("\\begin{figure}[H]\n")
+                escaped_name = fname.replace('_', r'\_')
+                f.write("  \\begin{subfigure}[t]{0.48\\linewidth}\n")
+                f.write(f"    \\includegraphics[width=\\linewidth]{{../{image_folder}/{fname}}}\n")
+                f.write(f"    \\caption{{{escaped_name}}}\n")
+                f.write("  \\end{subfigure}\n")
+                if i % 2 == 1 or i == len(fnames) - 1:
+                    f.write("\\end{figure}\n\n")
+
+            f.write("\\clearpage\n\n")
+        f.write("\\end{document}\n")
+
+    print(f"LaTeX file generated: {output_tex}")
+
+    try:
+        subprocess.run(
+            ["pdflatex", "-output-directory", output_dir, output_tex],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        print(f"PDF generated successfully: {os.path.join(output_dir, 'figures.pdf')}")
+    except FileNotFoundError:
+        print("Error: pdflatex not found.")
+        return
+    except subprocess.CalledProcessError:
+        print("Error: pdflatex compilation failed.")
+        return
+
+    # Clean up auxiliary files
+    for ext in [".aux", ".log", ".out"]:
+        aux_file = os.path.join(output_dir, "figures" + ext)
+        if os.path.exists(aux_file):
+            os.remove(aux_file)
+
+    print("Auxiliary files cleaned up.")
 
 def print_block(title, entries):
     """Print a well-formatted block of labeled entries."""
@@ -18,7 +91,6 @@ def print_block(title, entries):
     for label, value in entries:
         print(f"  {label:<30}: {value}")
     print("-" * 48)
-
 
 def read_fields(filename):
     with open(filename, 'rb') as f:
@@ -34,7 +106,7 @@ def read_fields(filename):
         pp = np.fromfile(f, dtype=np.float64, count=n).reshape((nx, ny, nz), order='F')
     return time, x, y, z, ux, uy, uz, pp
 
-def plot_divergence_planes(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time):
+def plot_divergence_planes(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, save_fig=None, fig_name=None):
     # Compute divergence of the velocity field
     div = (
         np.gradient(ux, x, axis=0, edge_order=2) +
@@ -99,7 +171,12 @@ def plot_divergence_planes(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time):
 
     fig.suptitle(f"Divergence field at t = {time:.2f}", fontsize=16)
     plt.tight_layout()
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
 
 def compute_momentum_thickness(y, u_profile, U1, U2):
     """Compute momentum thickness delta_theta for a given velocity profile."""
@@ -107,7 +184,7 @@ def compute_momentum_thickness(y, u_profile, U1, U2):
     integrand = ((U1 - u_profile) / delta_u) * ((u_profile - U2) / delta_u)
     return np.trapz(integrand, y)
 
-def plot_velocity_profiles(time, x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, direction='x'):
+def plot_velocity_profiles(time, x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, direction='x', save_fig=None, fig_name=None):
     """
     Plot 1D velocity profiles along a given direction, with proper axis orientation.
     If direction is 'y', the profile is plotted horizontally (u vs y).
@@ -156,9 +233,15 @@ def plot_velocity_profiles(time, x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, di
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
 
-def plot_mixing_layer_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, re_init, threshold_ratio=0.05):
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
+
+def plot_mixing_layer_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, re_init, threshold_ratio=0.05, save_fig=None, fig_name=None):
     """
     Analyze and plot the mixing layer at a given (x,z) position:
     - Mean velocity profiles (averaged over x and z)
@@ -313,11 +396,16 @@ def plot_mixing_layer_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, re_ini
         fontsize=16
     )
     plt.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
 
     return delta, delta_theta, re_new, re_theta 
 
-def plot_planar_jet_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, u_jet, re_init, threshold_ratio=0.05):
+def plot_planar_jet_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, u_jet, re_init, threshold_ratio=0.05, save_fig=None, fig_name=None):
     """
     Analyze a planar jet: compute mean and fluctuating velocity profiles,
     jet thickness (delta_j), and shear-layer momentum thickness (theta).
@@ -436,9 +524,16 @@ def plot_planar_jet_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, u_jet, r
         fontsize=16
     )
     plt.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
 
-def plot_velocity_fluctuations_plan(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, direction='x'):
+    return delta_j, theta, re_delta_j, re_theta
+
+def plot_velocity_fluctuations_plan(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, direction='x', save_fig=None, fig_name=None):
     """
     Plot velocity fluctuations in a plane orthogonal to the specified direction.
     If direction = 'x', plot in (y,z)
@@ -476,8 +571,8 @@ def plot_velocity_fluctuations_plan(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot,
         ux_mean = np.mean(ux, axis=2)
         uy_mean = np.mean(uy, axis=2)
         uz_mean = np.mean(uz, axis=2)
-        coord1, coord2 = x, y
-        label1, label2 = 'x', 'y'
+        coord1, coord2 = y, x
+        label1, label2 = 'y', 'x'
         coord_plot = ['z', z_plot]
     else:
         raise ValueError("Direction must be 'x', 'y', or 'z'")
@@ -493,37 +588,58 @@ def plot_velocity_fluctuations_plan(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot,
 
     fig, axs = plt.subplots(1, 3, figsize=(16, 9))
     cmap = 'seismic'
+    if (direction == 'z'):
+        extent = [coord2.min(), coord2.max(), coord1.min(), coord1.max()]
+        im0 = axs[0].imshow(fluct_x.T, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        axs[0].set_title(rf"Fluctuation $u'_x({label1},{label2})$")
+        axs[0].set_xlabel(f"{label2}")
+        axs[0].set_ylabel(f"{label1}")
+        fig.colorbar(im0, ax=axs[0])
 
-    extent = [coord2.min(), coord2.max(), coord1.min(), coord1.max()]
-    im0 = axs[0].imshow(fluct_x, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
-    axs[0].set_title(rf"Fluctuation $u'_x({label1},{label2})$")
-    axs[0].set_xlabel(f"{label2}")
-    axs[0].set_ylabel(f"{label1}")
-    fig.colorbar(im0, ax=axs[0])
+        im1 = axs[1].imshow(fluct_y.T, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        axs[1].set_title(rf"Fluctuation $u'_y({label1},{label2})$")
+        axs[1].set_xlabel(f"{label2}")
+        axs[1].set_ylabel(f"{label1}")
+        fig.colorbar(im1, ax=axs[1])
 
-    im1 = axs[1].imshow(fluct_y, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
-    axs[1].set_title(rf"Fluctuation $u'_y({label1},{label2})$")
-    axs[1].set_xlabel(f"{label2}")
-    axs[1].set_ylabel(f"{label1}")
-    fig.colorbar(im1, ax=axs[1])
+        im2 = axs[2].imshow(fluct_z.T, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        axs[2].set_title(rf"Fluctuation $u'_z({label1},{label2})$")
+        axs[2].set_xlabel(f"{label2}")
+        axs[2].set_ylabel(f"{label1}")
+        fig.colorbar(im2, ax=axs[2])
+    else:
+        extent = [coord2.min(), coord2.max(), coord1.min(), coord1.max()]
+        im0 = axs[0].imshow(fluct_x, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        axs[0].set_title(rf"Fluctuation $u'_x({label1},{label2})$")
+        axs[0].set_xlabel(f"{label2}")
+        axs[0].set_ylabel(f"{label1}")
+        fig.colorbar(im0, ax=axs[0])
 
-    im2 = axs[2].imshow(fluct_z, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
-    axs[2].set_title(rf"Fluctuation $u'_z({label1},{label2})$")
-    axs[2].set_xlabel(f"{label2}")
-    axs[2].set_ylabel(f"{label1}")
-    fig.colorbar(im2, ax=axs[2])
+        im1 = axs[1].imshow(fluct_y, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        axs[1].set_title(rf"Fluctuation $u'_y({label1},{label2})$")
+        axs[1].set_xlabel(f"{label2}")
+        axs[1].set_ylabel(f"{label1}")
+        fig.colorbar(im1, ax=axs[1])
+
+        im2 = axs[2].imshow(fluct_z, extent=extent, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        axs[2].set_title(rf"Fluctuation $u'_z({label1},{label2})$")
+        axs[2].set_xlabel(f"{label2}")
+        axs[2].set_ylabel(f"{label1}")
+        fig.colorbar(im2, ax=axs[2])
 
     fig.suptitle(
             f"Velocity fluctuations in the {label1}-{label2} plane at time t = {time:.2f} and {coord_plot[0]:1s} = {coord_plot[1]:.2f}",
         fontsize=16
     )
     plt.tight_layout(rect=[0, 0, 1, 0.92])
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-def plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=False, normalize=False, return_data=False, re_init=1000.0):
+def plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=False, normalize=False, return_data=False, re_init=1000.0, save_fig=None, fig_name=None):
     """
     Compute and plot the isotropic energy spectrum and diagnose spectral resolution.
 
@@ -610,6 +726,18 @@ def plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=False, normalize=False, 
         "Under-resolved"
     )
 
+    # Find peak energy position (excluding k ≈ 0)
+    valid = (k_centers > 1e-8)  # exclude k=0 or near-zero
+    k_peak = k_centers[valid][np.argmax(E_k[valid])]
+
+    # Compute local slope in log-log space
+    log_k = np.log10(k_centers)
+    log_E = np.log10(E_k)
+    slope_local = np.gradient(log_E, log_k)
+
+    # Define inertial range as slope ≈ -5/3 ± 0.3
+    mask_inertial = (slope_local < -1.3) & (slope_local > -2.0)
+
     print_block("Spectral resolution diagnostics", [
         ("nu (viscosity)",        f"{nu:.2e}"),
         ("Mean enstrophy",        f"{enstrophy:.4e}"),
@@ -619,8 +747,18 @@ def plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=False, normalize=False, 
         ("Delta / eta",           f"{delta_over_eta:.2f}"),
         ("k_max (Nyquist)",       f"{k_nyquist:.2f}"),
         ("k_eta = 1 / eta",       f"{k_eta:.2f}"),
-        ("Resolution check",      res_quality)
+        ("Resolution check",      res_quality),
+        ("k_peak (eddy scale)"  , f"{k_peak:.2f}")
     ])
+    if np.any(mask_inertial):
+        k_inertial = k_centers[mask_inertial]
+        inertial_width = np.log10(k_inertial[-1]) - np.log10(k_inertial[0])
+        print(f"  Inertial range width log10(k): {inertial_width:.2f}")
+        print(f"  From k = {k_inertial[0]:.2f} to {k_inertial[-1]:.2f}")
+    else:
+        print("   No clear inertial range detected.")
+
+    print("-" * 48)
 
     # Plot
     plt.figure(figsize=(16, 9))
@@ -653,7 +791,12 @@ def plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=False, normalize=False, 
     plt.grid(True, which='both', linestyle=':', alpha=0.6)
     plt.legend(loc='lower left')
     plt.tight_layout()
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()   
 
     if return_data:
         return {
@@ -707,6 +850,57 @@ def compute_smagorinsky_viscosity(x, y, z, ux, uy, uz, cs=0.17):
     nut = (cs * delta) ** 2 * np.sqrt(S2)
     return nut, delta
 
+def plot_nut_slices_combined(nut, x, y, z, time, x_plot=None, y_plot=None, z_plot=None, vmin=None, vmax=None, 
+        save_fig=None, fig_name=None):
+    """
+    Affiche les trois coupes (x-y, x-z, y-z) de log10(nu_t) dans une seule fenêtre matplotlib.
+    """
+
+    # Trouve les indices proches des coordonnées demandées
+    i_plot = np.argmin(np.abs(x - x_plot)) if x_plot is not None else len(x) // 2
+    j_plot = np.argmin(np.abs(y - y_plot)) if y_plot is not None else len(y) // 2
+    k_plot = np.argmin(np.abs(z - z_plot)) if z_plot is not None else len(z) // 2
+
+    # Évite les valeurs nulles ou négatives avant log10
+    nut_safe = np.where(nut > 1e-20, nut, 1e-20)
+    lognut = np.log10(nut_safe)
+
+    # Détermine les niveaux de couleur
+    vmin = vmin if vmin is not None else np.min(lognut)
+    vmax = vmax if vmax is not None else np.max(lognut)
+
+    fig, axs = plt.subplots(1, 3, figsize=(16, 9), constrained_layout=True)
+    cmap = "viridis"
+
+    # x-y @ z = z_plot
+    im0 = axs[0].contourf(x, y, lognut[:, :, k_plot].T, levels=50, cmap=cmap, vmin=vmin, vmax=vmax)
+    axs[0].set_title(rf"$\log(\nu_t)$ in x-y at $z =${z[k_plot]:.2f}")
+    axs[0].set_xlabel("x")
+    axs[0].set_ylabel("y")
+
+    # x-z @ y = y_plot
+    im1 = axs[1].contourf(z, x, lognut[:, j_plot, :], levels=50, cmap=cmap, vmin=vmin, vmax=vmax)
+    axs[1].set_title(rf"$\log(\nu_t)$ in x-z at $y =${y[j_plot]:.2f}")
+    axs[1].set_xlabel("z")
+    axs[1].set_ylabel("x")
+
+    # y-z @ x = x_plot
+    im2 = axs[2].contourf(z, y, lognut[i_plot, :, :], levels=50, cmap=cmap, vmin=vmin, vmax=vmax)
+    axs[2].set_title(rf"$\log(\nu_t)$ in y-z at $x =${x[i_plot]:.2f}")
+    axs[2].set_xlabel("z")
+    axs[2].set_ylabel("y")
+
+    # Barre de couleur partagée
+    fig.colorbar(im2, ax=axs.ravel().tolist(), shrink=0.9, label=r"$\log(\nu_t)$")
+
+    plt.suptitle(rf"Subgrid-scale viscosity slices $\log(\nu_t)$ at $t =${time:.1f}", fontsize=14)
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()   
+
 def analyze_turbulent_development(x, y, z, ux, uy, uz, time, re_init=1000.0, cs=0.17, LES=False):
     u_mag_sq = ux**2 + uy**2 + uz**2
     tke = 0.5 * np.mean(u_mag_sq)
@@ -731,7 +925,7 @@ def analyze_turbulent_development(x, y, z, ux, uy, uz, time, re_init=1000.0, cs=
         nut_mean = np.mean(nut)
         lambda_cutoff = 2 * delta
         nu = 1.0 / re_init
-        resolved_ratio = nut_mean / (nut_mean + nu)
+        resolved_ratio = nut_max / (nut_max + nu)
         eta = 1.0 / (re_init ** 0.75)
         delta_over_eta = delta / eta
 
@@ -752,14 +946,17 @@ def analyze_turbulent_development(x, y, z, ux, uy, uz, time, re_init=1000.0, cs=
             ("Smagorinsky nu_t mean", f"{nut_mean:.3e}"),
             ("LES cutoff length scale", f"{lambda_cutoff:.4f}"),
             ("nu", f"{nu:.3e}"),
+            ("nu_t max", f"{nut_max:.3e}"),
+            ("nu_t mean", f"{nut_mean:.3e}"),
             ("nu_t / (nu + nu_t)", f"{resolved_ratio:.2f}"),
+            ("Filter size delta", f"{delta:.4e}"),
             ("Kolmogorov scale (eta)", f"{eta:.4e}"),
             ("Delta / eta (resolution)", f"{delta_over_eta:.2f}")
         ]
 
         print_block("Turbulence development analysis", block)
         print(f"\n  LES quality assessment     : {quality}")
-        print(f"  Filter resolution check    : delta / eta ≈ {delta_over_eta:.2f}")
+        print(f"  Filter resolution check    : delta / eta = {delta_over_eta:.2f}")
         if delta_over_eta <= 1.0:
             print("  LES nearly DNS-resolved (resolves Kolmogorov scale)")
         elif delta_over_eta <= 2.0:
@@ -777,8 +974,11 @@ def analyze_turbulent_development(x, y, z, ux, uy, uz, time, re_init=1000.0, cs=
         else:
             print("LAMINAR or UNDERDEVELOPED")
         print("-" * 48)
+        nut, delta=None, None
 
-def plot_rms_profiles(x, y, z, ux, uy, uz, time):
+    return nut, delta
+
+def plot_rms_profiles(x, y, z, ux, uy, uz, time, save_fig=None, fig_name=None):
     """
     Compute and plot the RMS profiles of velocity fluctuations.
     Fluctuations are defined as u' = u - <u>, where <u> is the mean over (x, z).
@@ -837,11 +1037,16 @@ def plot_rms_profiles(x, y, z, ux, uy, uz, time):
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
 
     return ux_rms, uy_rms, uz_rms, tke_profile
 
-def plot_time_evolution(data_log):
+def plot_time_evolution(data_log, save_fig=None, fig_name=None):
     """
     Plot temporal evolution of mixing layer and turbulence indicators.
     """
@@ -902,7 +1107,12 @@ def plot_time_evolution(data_log):
     table.scale(1.2, 1.5)
     fig.suptitle("Time evolution of turbulence indicators", fontsize=16)
     plt.tight_layout()
-    plt.show()
+    if save_fig:
+        if not os.path.exists("png"):
+            os.makedirs("png")
+        plt.savefig(f"png/{fig_name}", dpi=300, bbox_inches='tight', transparent=False)
+    else:
+        plt.show()
 
 def main():
 
@@ -955,23 +1165,42 @@ def main():
     parser.add_argument('--evolution', '-e', action='store_true',
             help="Plot time evolution of key turbulence indicators from all files")
 
+    parser.add_argument('--pdf', action='store_true',
+        help="Save all figures to ./png and compile them into a single PDF at the end.")
+
     args = parser.parse_args()
  
     file_list = list(itertools.chain.from_iterable(glob.glob(f) for f in args.filename))
     file_list = sorted(set(file_list))  # dédoublonner + trier
 
+    field_time_map = {}
+
     if not file_list:
         print("Aucun fichier trouvé pour les motifs donnés.")
         return 1
 
+    if args.pdf:
+        import shutil
+
+        os.makedirs("png", exist_ok=True)
+        # Nettoyer ./png
+        for f in os.listdir("png"):
+            os.remove(os.path.join("png", f))
+
+        os.makedirs("pdf", exist_ok=True)
+
     data_log = []  # store time series data
     for fname in file_list:
         print(f"\n========= Analyse de {fname} =========")
+        basename = os.path.basename(fname)
+        file_id = os.path.splitext(basename)[0].split('_')[-1]  # extract XXXXXX
         time, x, y, z, ux, uy, uz, pp = read_fields(fname)
+        field_time_map[file_id] = time
         block = [
             ("File", fname),
             ("Time", f"{time:.1f}"),
             ("nx, ny, nz", f"{len(x)}, {len(y)}, {len(z)}"),
+            ("Lx, Ly, Lz", f"{x[-1]-x[0]:.1f}, {y[-1]-y[0]:.1f}, {z[-1]-z[0]:.1f}"),
             ("ux min/max", f"{ux.min():.3e} / {ux.max():.3e} "),
             ("uy min/max", f"{uy.min():.3e} / {uy.max():.3e} "),
             ("uz min/max", f"{uz.min():.3e} / {uz.max():.3e} "),
@@ -980,42 +1209,59 @@ def main():
         ]
         print_block("Field summary", block)
 
-    
         if args.plot_velocity_profiles:
-            plot_velocity_profiles(time, x, y, z, ux, uy, uz, 
-                    args.x, args.y, args.z, args.direction)
-    
+            plot_velocity_profiles(time, x, y, z, ux, uy, uz,
+                args.x, args.y, args.z, args.direction,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_velocity_profile_{args.direction}.png")
+        
         if args.mixing_layer:
             delta_value, theta_value, re_delta_value, re_theta_value = plot_mixing_layer_profiles(
-                    x, y, z, ux, uy, uz, 
-                    args.x, args.z, time, re_init=args.reynolds)
-
+                x, y, z, ux, uy, uz,
+                args.x, args.z, time, re_init=args.reynolds,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_mixing_layer.png")
+        
         if args.planar_jet:
-            plot_planar_jet_profiles(
-                    x, y, z, ux, uy, uz,
-                    args.x, args.z, time, u_jet=1., 
-                    re_init=args.reynolds
-                    )
-    
+            delta_value, theta_value, re_delta_value, re_theta_value = plot_planar_jet_profiles(
+                x, y, z, ux, uy, uz,
+                args.x, args.z, time, u_jet=1.,
+                re_init=args.reynolds,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_planar_jet.png")
+        
         if args.fluctuations:
             plot_velocity_fluctuations_plan(
-                    x, y, z, ux, uy, uz,
-                    args.x, args.y, args.z,
-                    time, direction=args.direction
-                    )
-
+                x, y, z, ux, uy, uz,
+                args.x, args.y, args.z,
+                time, direction=args.direction,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_fluctuations_{args.direction}.png")
+        
         if args.turbulence:
-            plot_energy_spectrum(ux, uy, uz, x, y, z, time, LES=args.les, normalize=True)
-            analyze_turbulent_development(x, y, z, ux, uy, uz, time,
-                    re_init=args.reynolds, cs=args.smagorinsky_constant, 
-                    LES=args.les)
-
+            plot_energy_spectrum(ux, uy, uz, x, y, z, time,
+                LES=args.les, normalize=True,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_kolmogorov_spectrum.png")
+            nut, delta_filter = analyze_turbulent_development(x, y, z, ux, uy, uz, time,
+                re_init=args.reynolds, cs=args.smagorinsky_constant,
+                LES=args.les)
+            if args.les:
+                plot_nut_slices_combined(nut, x, y, z, time, x_plot=args.x, y_plot=args.y, z_plot=args.z,
+                        save_fig=args.pdf, fig_name=f"{file_id}_nut_planes.png")
+        
         if args.rms:
             ux_rms, uy_rms, uz_rms, tke_profile = plot_rms_profiles(
-                    x, y, z, ux, uy, uz, time)
-
+                x, y, z, ux, uy, uz, time,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_rms_profiles.png")
+        
         if args.divergence:
-            plot_divergence_planes(x, y, z, ux, uy, uz, args.x, args.y, args.z, time)
+            plot_divergence_planes(x, y, z, ux, uy, uz,
+                args.x, args.y, args.z, time,
+                save_fig=args.pdf,
+                fig_name=f"{file_id}_divergence_planes.png")
+        
 
         # Collect data for time evolution plots
         if args.evolution:
@@ -1033,9 +1279,13 @@ def main():
             data_log.append(rms_vals)
 
     if args.evolution:
-        plot_time_evolution(data_log)
+        plot_time_evolution(data_log,
+                save_fig=args.pdf,
+                fig_name=f"evolution.png")
 
-
+    if args.pdf:
+        generate_latex_figure_pdf(field_time_map=field_time_map)
+    
     return 0
 
 if __name__ == "__main__":

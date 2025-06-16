@@ -4,25 +4,27 @@ module noise_mod
   include 'fftw3.f03'
 contains
 
-  subroutine noise_generator_1D(n, k0, s, noise)
+  subroutine noise_generator_1D(n, k0, s, noise, seed_input)
     !> 1D random noise generator in physical space from a spectral distribution
     !> with energy envelope E(k) ∝ k² / (1 + (k/k₀)^|s|)
     !> Allows both positive and negative spectral slope s
     !> Based on inverse FFT using FFTW3 (complex to real transform)
     !>
-    !> INPUT:  n      : number of spatial points (grid size)
-    !>         k0     : wavenumber at which energy is peaked
-    !>         s      : spectral slope (can be negative)
-    !> OUTPUT: noise  : real-valued 1D noise in physical space (size n)
+    !> INPUT:  n          : number of spatial points (grid size)
+    !>         k0         : wavenumber at which energy is peaked
+    !>         s          : spectral slope (can be negative)
+    !>         seed_input : optionnal seed for Initialize random seed
+    !> OUTPUT: noise      : real-valued 1D noise in physical space (size n)
 
     integer, intent(in) :: n
+    integer, intent(in), optional :: seed_input
     real(kind=8), intent(in) :: k0, s
     real(kind=8), intent(out) :: noise(n)
 
     complex(c_double_complex), allocatable :: spectrum(:)
     type(C_PTR) :: plan
     real(c_double) :: rand_r, rand_i
-    integer :: k, nk
+    integer :: k, nk, seed_used
     real(kind=8) :: amplitude, envelope
 
     ! Variables for random seed initialization
@@ -34,9 +36,15 @@ contains
     allocate(spectrum(nk))
 
     ! Initialize random seed using system clock
+    if (present(seed_input)) then
+       seed_used = seed_input
+    else
+       seed_used = 12345  ! default value
+    end if
+
     call system_clock(count=seed(1))
     do i = 2, 8
-       seed(i) = seed(i - 1) + i * 12345
+       seed(i) = seed(i - 1) + i * seed_input
     end do
     call random_seed(put=seed)
 

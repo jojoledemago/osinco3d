@@ -47,7 +47,7 @@ program osinco3d
   end if
   if (ici == 2 .or. ici == 3) then
      call add_turbulent_init(ux, uy, uz, &
-         nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, typesim)
+          nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, typesim)
   end if
   if (iin == 1) then
      call calcul_u_base(u_base, ux(1,:,kpro), dy)

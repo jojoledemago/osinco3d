@@ -8,7 +8,7 @@ set pm3d map # Trace d'une carte
 set size ratio -1 # Echelles orthonormées
 set palette model RGB defined (-1 'black', 0 'red', 1 'yellow', 2 'white') #heat scale with black
 set tics out # Tics vers l'extérieur
-set cbrange[0:1] # Etendue de la coloration
+#set cbrange[0:1] # Etendue de la coloration
 unset xtics # Pas de graduation selon z
 unset ytics
 unset ztics

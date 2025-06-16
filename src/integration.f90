@@ -1,6 +1,7 @@
 module integration
   use functions
   use poisson
+  use poisson_multigrid
   use derivation
   use initialization
   use diffoper
@@ -69,8 +70,7 @@ contains
     real(kind=8), allocatable, dimension(:,:,:) :: d2uxdx2, d2uxdy2, d2uxdz2
     real(kind=8), allocatable, dimension(:,:,:) :: d2uydx2, d2uydy2, d2uydz2
     real(kind=8), allocatable, dimension(:,:,:) :: d2uzdx2, d2uzdy2, d2uzdz2
-    real(kind=8), allocatable, dimension(:,:,:) :: dtau_dx, dtau_dy, dtau_dz
-    real(kind=8), allocatable, dimension(:,:,:,:) :: tau_ij
+    real(kind=8), allocatable, dimension(:,:,:) :: nu_eff
 
     print *, "* Predict velocity"
 
@@ -81,8 +81,7 @@ contains
     allocate(d2uxdx2(nx,ny,nz), d2uxdy2(nx,ny,nz), d2uxdz2(nx,ny,nz))
     allocate(d2uydx2(nx,ny,nz), d2uydy2(nx,ny,nz), d2uydz2(nx,ny,nz))
     allocate(d2uzdx2(nx,ny,nz), d2uzdy2(nx,ny,nz), d2uzdz2(nx,ny,nz))
-    allocate(dtau_dx(nx,ny,nz), dtau_dy(nx,ny,nz), dtau_dz(nx,ny,nz))
-    allocate(tau_ij(nx,ny,nz,6))
+    allocate(nu_eff(nx,ny,nz))
 
     if (itscheme == 1 .or. itime == 1) then
        print *, " Euler"
@@ -111,10 +110,13 @@ contains
     if (iles == 1) then
        print *, " LES model calculation"
        call calculate_nu_t(nu_t, ux, uy, uz, dx, dy, dz, cs, delta)
-       call calculate_tau_ij(tau_ij, ux, uy, uz, dx, dy, dz, nu_t)
-       call calculate_dtau_ij_dxj(dtau_dx, dtau_dy, dtau_dz, &
-            tau_ij, dx, dy, dz)
+       !call calculate_tau_ij(tau_ij, ux, uy, uz, dx, dy, dz, nu_t)
+       !call calculate_dtau_ij_dxj(dtau_dx, dtau_dy, dtau_dz, &
+       !     tau_ij, dx, dy, dz)
+    else 
+        nu_t = 0.0d0
     end if
+    nu_eff = onere + nu_t
 
     ! Compute partial first derivatives of ux
     ! with respect to x, y, z axis
@@ -129,11 +131,8 @@ contains
 
     ! Update fux for the new time step
     ! using viscosity and convective termes
-    fux(:, :, :, 1) = onere * (d2uxdx2 + d2uxdy2 + d2uxdz2) - &
+    fux(:, :, :, 1) = nu_eff * (d2uxdx2 + d2uxdy2 + d2uxdz2) - &
          (ux * duxdx + uy * duxdy + uz * duxdz)
-    if (iles == 1) then
-       fux(:, :, :, 1) = fux(:, :, :, 1) - dtau_dx
-    end if
     ! Compute predicted velocities ux using the selected time integration scheme
     ux_pred = ux + adu * fux(:, :, :, 1) + &
          bdu * fux(:, :, :, 2) + &
@@ -152,11 +151,8 @@ contains
 
     ! Update fuy for the new time step
     ! using viscosity and convective termes
-    fuy(:, :, :, 1) = onere * (d2uydx2 + d2uydy2 + d2uydz2) - &
+    fuy(:, :, :, 1) = nu_eff * (d2uydx2 + d2uydy2 + d2uydz2) - &
          (ux * duydx + uy * duydy + uz * duydz)
-    if (iles == 1) then
-       fuy(:, :, :, 1) = fuy(:, :, :, 1) - dtau_dy
-    end if
     ! Compute predicted velocities uy using the selected time integration scheme
     uy_pred = uy + adu * fuy(:, :, :, 1) + &
          bdu * fuy(:, :, :, 2) + &
@@ -175,11 +171,8 @@ contains
 
     ! Update fuz for the new time step
     ! using viscosity and convective termes
-    fuz(:, :, :, 1) = onere * (d2uzdx2 + d2uzdy2 + d2uzdz2) - &
+    fuz(:, :, :, 1) = nu_eff * (d2uzdx2 + d2uzdy2 + d2uzdz2) - &
          (ux * duzdx + uy * duzdy + uz * duzdz)
-    if (iles == 1) then
-       fuz(:, :, :, 1) = fuz(:, :, :, 1) - dtau_dz
-    end if
     ! Compute predicted velocities uz using the selected time integration scheme
     uz_pred = uz + adu * fuz(:, :, :, 1) + &
          bdu * fuz(:, :, :, 2) + &
@@ -212,7 +205,7 @@ contains
     deallocate(duxdx, duxdy, duxdz, d2uxdx2, d2uxdy2, d2uxdz2)
     deallocate(duydx, duydy, duydz, d2uydx2, d2uydy2, d2uydz2)
     deallocate(duzdx, duzdy, duzdz, d2uzdx2, d2uzdy2, d2uzdz2)
-    deallocate(tau_ij, dtau_dx, dtau_dy, dtau_dz)
+    deallocate(nu_eff)
     print *, ""
 
     return

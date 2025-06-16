@@ -66,14 +66,14 @@ def assess_flow_regime(time, E_k, epsilon_t, epsilon, Re_init=None):
     Print a qualitative assessment of the flow regime based on energy trends.
     """
     print("\n--- Flow Regime Assessment ---")
-    print(f"Total time interval: [{time[0]:.2f}, {time[-1]:.2f}]")
+    print(f"Time interval: [{time[0]:.2f}, {time[-1]:.2f}]")
 
     # Energy analysis
     dE = E_k[-1] - E_k[0]
     mean_eps_t = np.mean(epsilon_t)
     mean_eps = np.mean(epsilon)
 
-    print(f"Kinetic energy change: delta E_k = {dE:+.4e}")
+    print(f"Kinetic energy change: ΔE_k = {dE:+.4e}")
     print(f"Mean epsilon_t        : {mean_eps_t:.4e}")
     print(f"Mean viscous epsilon  : {mean_eps:.4e}")
 
@@ -97,23 +97,33 @@ def assess_flow_regime(time, E_k, epsilon_t, epsilon, Re_init=None):
     print("-------------------------------\n")
 
 def main():
-
-    # Inside main(), before reading file:
     parser = argparse.ArgumentParser(description="Analyze CFD global statistics over time.")
+    parser.add_argument(
+        "-f", "--file",
+        type=str,
+        default="outputs/stats.dat",
+        help="Path to the CFD statistics file (default: outputs/stats.dat)"
+    )
     parser.add_argument(
         "-re", "--reynolds",
         type=float,
         default=None,
-        help="Initial Reynolds number (optional, used in diagnostic)"
+        help="Initial Reynolds number (optional, used for diagnostics)"
     )
     parser.add_argument(
-            "-f", "--file",
-            type=str,
-            default="outputs/stats.dat",
-            help="Chemin vers le fichier de statistiques CFD (par défaut: outputs/stats.dat)"
-            )
-    args = parser.parse_args()
+        "--start",
+        type=float,
+        default=None,
+        help="Start time for analysis (optional)"
+    )
+    parser.add_argument(
+        "--stop",
+        type=float,
+        default=None,
+        help="Stop time for analysis (optional)"
+    )
 
+    args = parser.parse_args()
     stats_file = args.file
 
     try:
@@ -122,11 +132,28 @@ def main():
         print(e)
         return
 
-    # Extract relevant columns
+    # Extract columns
     time = data[:, 0]
     E_k = data[:, 1]
     epsilon_t = data[:, 2]
     epsilon = data[:, 3]
+
+    # Time filtering
+    t_start = args.start if args.start is not None else time[0]
+    t_stop = args.stop if args.stop is not None else time[-1]
+
+    mask = (time >= t_start) & (time <= t_stop)
+    if not np.any(mask):
+        print(f"No data found in the interval [{t_start}, {t_stop}].")
+        return
+
+    # Apply mask
+    time = time[mask]
+    E_k = E_k[mask]
+    epsilon_t = epsilon_t[mask]
+    epsilon = epsilon[mask]
+
+    print(f"Performing analysis in time interval: [{t_start}, {t_stop}] ({len(time)} points)")
 
     # Plot and assess
     plot_energy_dissipation(time, E_k, epsilon_t, epsilon)

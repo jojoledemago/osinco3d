@@ -1,17 +1,31 @@
 #===============================================================================
 # Fortran Compiler and Flags
 #===============================================================================
-FC      = gfortran
-FFLAGS  = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) -fall-intrinsics -fPIC -I/usr/include
-LDFLAGS =
-LIBS    = -lfftw3 -lm
+FC = gfortran
+
+# Adjust include path if fftw3_f03.mod is elsewhere:
+FFTW_INC = /usr/include
+FFTW_LIB = /usr/lib
+
+ifdef debug
+  FFLAGS = -Wall -Wextra -std=f2008 -O0 -g -cpp -MMD -MP -J$(OBJDIR) \
+           -fall-intrinsics -fPIC -fcheck=all -fbacktrace -I$(FFTW_INC) -L$(FFTW_LIB)
+  DBGMSG = "*** DEBUG mode enabled ***"
+else
+  FFLAGS = -Wall -Wextra -std=f2008 -O3 -cpp -MMD -MP -J$(OBJDIR) \
+           -fall-intrinsics -fPIC -I$(FFTW_INC) -L$(FFTW_LIB)
+  DBGMSG = "--- Release mode (optimized) ---"
+endif
+
+LDFLAGS = -L$(FFTW_LIB)
+LIBS    = -lfftw3 -lfftw3_threads -lm
 
 #===============================================================================
 # Project Structure
 #===============================================================================
 SRCDIR     ?= ./
 OBJDIR     ?= $(SRCDIR)/build
-EXEDIR     ?= $(SRCDIR)/bin
+EXEDIR     ?= $(SRCDIR)/../bin
 EXECUTABLE = $(EXEDIR)/osinco3d.app
 
 #===============================================================================
@@ -19,16 +33,14 @@ EXECUTABLE = $(EXEDIR)/osinco3d.app
 #===============================================================================
 SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/derivation.f90 \
-          $(SRCDIR)/noise_mod.f90 \
-          $(SRCDIR)/boundary_conditions.f90 \
+          $(SRCDIR)/add_disturb.f90 \
           $(SRCDIR)/poisson.f90 \
-          $(SRCDIR)/poisson_multigrid.f90 \
           $(SRCDIR)/initialization.f90 \
           $(SRCDIR)/IOfunctions.f90 \
           $(SRCDIR)/utils.f90 \
           $(SRCDIR)/visualization.f90 \
-          $(SRCDIR)/initial_conditions.f90 \
           $(SRCDIR)/differential_operators.f90 \
+          $(SRCDIR)/initial_conditions.f90 \
           $(SRCDIR)/les_turbulence.f90 \
           $(SRCDIR)/integration.f90 \
           $(SRCDIR)/osinco3d_main.f90
@@ -43,21 +55,18 @@ DEPS    = $(OBJECTS:.o=.d)
 # Default Target
 #===============================================================================
 all: directories $(EXECUTABLE)
+	@echo $(DBGMSG)
 	@echo "Compilation completed."
 
-# Create directories if they don't exist
 directories:
 	@mkdir -p $(OBJDIR) $(EXEDIR)
 
-# Link object files into the final executable
 $(EXECUTABLE): $(OBJECTS)
 	$(FC) $(LDFLAGS) $(OBJECTS) -o $@ $(LIBS)
 
-# Compile .f90 files into .o with module output in OBJDIR
 $(OBJDIR)/%.o: $(SRCDIR)/%.f90
 	$(FC) $(FFLAGS) -c -o $@ $<
 
-# Include dependency files for smart rebuilding
 -include $(DEPS)
 
 #===============================================================================

@@ -1,23 +1,24 @@
 module initial_conditions
   use functions
   use utils
-  use noise_mod
+  use add_disturb
   use initialization
   use derivation
   use visualization
   use IOfunctions
+  use poisson
+  use diffoper
   implicit none
 
   !> Abstract interface for initializing flow conditions.
   interface
      subroutine initialize_type(ux, uy, uz, pp, phi, x, y, z, nx, ny, nz, &
-          l0, ratio, nscr, ici, init_noise_x, init_noise_y, init_noise_z)
+          l0, ratio, nscr)
        real(kind=8), intent(in) :: x(:), y(:), z(:)
        real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
        real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
        real(kind=8), intent(in) :: l0, ratio 
-       real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
-       integer, intent(in) :: nx, ny, nz, nscr, ici
+       integer, intent(in) :: nx, ny, nz, nscr
      end subroutine initialize_type
   end interface
 
@@ -27,8 +28,7 @@ module initial_conditions
 contains
 
   subroutine initialize_vortex(ux, uy, uz, pp, phi, &
-       x, y, z, nx, ny, nz, l0, ratio, nscr, ici, &
-       init_noise_x, init_noise_y, init_noise_z)
+       x, y, z, nx, ny, nz, l0, ratio, nscr)    
     !> Initialize the flow field with a vortex centered at the middle of the domain.
     !> This subroutine sets the velocity field (ux, uy, uz) and the pressure (pp)
     !> based on a Gaussian profile for a vortex.
@@ -43,8 +43,6 @@ contains
     !> l0       : Characteristic length scale (radius of the vortex)
     !> ratio     : Ratio of maximum velocity to the characteristic velocity
     !> nscr     : Flag for scalar transport equation (0 or 1)
-    !> ici      : Initial condition index (specifies the type of initialization)
-    !> init_noise_x, init_noise_y, init_noise_z : Noise parameters (not used here)
     !>
     !> OUTPUT:
     !> ux(nx, ny, nz)  : X-component of velocity initialized with the vortex
@@ -56,8 +54,7 @@ contains
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
     real(kind=8), intent(in) :: l0, ratio 
-    real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
-    integer, intent(in) :: nx, ny, nz, nscr, ici
+    integer, intent(in) :: nx, ny, nz, nscr
 
     real(kind=8) :: dx, dy
     real(kind=8) :: cv, rv, xc, yc, zc, r, A
@@ -104,8 +101,7 @@ contains
   end subroutine initialize_vortex
 
   subroutine initialize_taylor_green_vortex(ux, uy, uz, pp, phi, &
-       x, y, z, nx, ny, nz, l0, ratio, nscr, ici, &
-       init_noise_x, init_noise_y, init_noise_z)
+       x, y, z, nx, ny, nz, l0, ratio, nscr)
     !> Initialize the flow field with Taylor-Green vortex.
     !> This subroutine sets the velocity field (ux, uy, uz) based on the exact
     !> solution for the Taylor-Green vortex in a periodic domain.
@@ -120,8 +116,6 @@ contains
     !> l0       : Characteristic length scale for the problem
     !> ratio    : Ratio of maximum velocity to the characteristic velocity
     !> nscr     : Flag for scalar transport equation (0 or 1)
-    !> ici      : Initial condition index (specifies the type of initialization)
-    !> init_noise_x, init_noise_y, init_noise_z : Noise parameters (not used here)
     !>
     !> OUTPUT:
     !> ux(nx, ny, nz)  : X-component of velocity initialized with Taylor-Green vortex
@@ -133,21 +127,18 @@ contains
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
     real(kind=8), intent(in) :: l0, ratio
-    real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
-    integer, intent(in) :: nx, ny, nz, nscr, ici
+    integer, intent(in) :: nx, ny, nz, nscr
 
     integer :: i, j, k 
-    integer, parameter :: n_jets_y=11, n_jets_z=11
-    real(kind=8) :: twopi, twox, twoy, twoz, y_length, z_length, A
+    real(kind=8) :: twopi, twox, twoy, twoz
+    real(kind=8), parameter :: smooth_width = 0.2d0
+    real(kind=8) :: R, dist, cx, cy, cz, delt
 
     print *, "* Condition Initiale for a the Taylor-Green vortex"
     if (ici == 1) print *, "* No excitation of the initial condition in the case of TGV"
 
-    A = init_noise_x * init_noise_y * init_noise_z ! Unused for no warning 
     ! during compilation
     twopi = 2.d0 * acos(-1.d0)
-    y_length = y(ny) - y(1)
-    z_length = z(nz) - z(1)
     do k = 1, nz
        twoz = 2.d0 * z(k)
        do j = 1, ny
@@ -158,22 +149,32 @@ contains
              uy(i,j,k) = -ratio * u0/l0 * cos(x(i)) * sin(y(j))* cos(z(k))
              uz(i,j,k) = 0.d0
              pp(i,j,k) = 0.0625d0 * (cos(twox) + cos(twoy)) * (cos(twoz) + 2.d0) !https://cfd.ku.edu/hiocfd/case_c3.5.pdf
-             if (nscr == 1) then
-                phi(i,j,k) = 0.5d0 * &
-                     (cos(twopi * n_jets_y * (y(j) - y(1)) / y_length) * &                  
-                     cos(twopi * n_jets_z * (z(k) - z(1)) / z_length) + 1.d0)
-             end if
           end do
        end do
     end do
+    if (nscr == 1) then
+       print*, "* Initialize Scalar"
+       R = 0.25d0 * (x(nx) - x(1))
+       cx = 0.5d0 * (x(1) + x(nx))
+       cy = 0.5d0 * (y(1) + y(ny))
+       cz = 0.5d0 * (z(1) + z(nz))
+       delt = smooth_width * R 
+       do k = 1, nz
+          do j = 1, ny
+             do i = 1, nx
+                dist = sqrt( (x(i) - cx)**2 + (y(j) - cy)**2 + (z(k) - cz)**2 )
+                phi(i,j,k) = 0.5d0 * (1.d0 - tanh((dist - R) / delta))
+             end do
+          end do
+       end do
+    end if
 
     return
 
   end subroutine initialize_taylor_green_vortex
 
   subroutine initialize_planar_jet(ux, uy, uz, pp, phi, &
-       x, y, z, nx, ny, nz, l0, ratio, nscr, ici, &
-       init_noise_x, init_noise_y, init_noise_z)
+       x, y, z, nx, ny, nz, l0, ratio, nscr)
     !> Initialize the flow field for a planar jet.
     !> This subroutine sets the velocity field (ux, uy, uz) for multiple jets
     !> that are coplanar, allowing for the simulation of interactions between
@@ -189,8 +190,6 @@ contains
     !> l0       : Characteristic length scale for the jets
     !> ratio    : Ratio of maximum velocity to the characteristic velocity
     !> nscr     : Flag for scalar transport equation (0 or 1)
-    !> ici      : Initial condition index (specifies the type of initialization)
-    !> init_noise_x, init_noise_y, init_noise_z : Noise parameters
     !>
     !> OUTPUT:
     !> ux(nx, ny, nz)  : X-component of velocity initialized for the coplanar jet
@@ -202,8 +201,7 @@ contains
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
     real(kind=8), intent(in) :: l0, ratio 
-    real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
-    integer, intent(in) :: nx, ny, nz, nscr, ici
+    integer, intent(in) :: nx, ny, nz, nscr
 
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
     real(kind=8) :: phi1, phi2
@@ -213,6 +211,11 @@ contains
     integer :: i, j, k, kx
 
     print *, "* Condition Initiale for a Planar Jet simulation"
+
+    if (ici == 1) then
+       A = init_noise_x * init_noise_y * init_noise_z
+       A = A / ratio
+    end if
 
     pi = acos(-1.d0)
     u1 = u0 / (1. - ratio)
@@ -259,8 +262,7 @@ contains
   end subroutine initialize_planar_jet
 
   subroutine initialize_coplanar_jet(ux, uy, uz, pp, phi, x, y, z, &
-       nx, ny, nz, l0, ratio, nscr, ici, &
-       init_noise_x, init_noise_y, init_noise_z)
+       nx, ny, nz, l0, ratio, nscr)
     !> Initialize the flow field for a coplanar jet.
     !> This subroutine sets the velocity field (ux, uy, uz) for multiple jets
     !> that are coplanar, allowing for the simulation of interactions between
@@ -276,8 +278,6 @@ contains
     !> l0       : Characteristic length scale for the jets
     !> ratio    : Ratio of maximum velocity to the characteristic velocity
     !> nscr     : Flag for scalar transport equation (0 or 1)
-    !> ici      : Initial condition index (specifies the type of initialization)
-    !> init_noise_x, init_noise_y, init_noise_z : Noise parameters
     !>
     !> OUTPUT:
     !> ux(nx, ny, nz)  : X-component of velocity initialized for 
@@ -291,8 +291,7 @@ contains
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
     real(kind=8), intent(in) :: l0, ratio 
-    real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
-    integer, intent(in) :: nx, ny, nz, nscr, ici
+    integer, intent(in) :: nx, ny, nz, nscr
 
     real(kind=8) :: u1, u2, u3, theta_1, theta_2, d1, d2, h1, h2, hm
     real(kind=8) :: phi1, phi2
@@ -304,6 +303,10 @@ contains
 
     print *, "* Condition Initiale for a Co-planar Jet simulation"
 
+    if (ici == 1) then
+       A = init_noise_x * init_noise_y * init_noise_z
+       A = A / ratio
+    end if
     pi = acos(-1.d0)
     u2 = u0
     u1 = u2 / ratio
@@ -364,8 +367,7 @@ contains
   end subroutine initialize_coplanar_jet
 
   subroutine initialize_mixing_layer(ux, uy, uz, pp, phi, x, y, z, &
-       nx, ny, nz, l0, ratio, nscr, ici, &
-       init_noise_x, init_noise_y, init_noise_z)
+       nx, ny, nz, l0, ratio, nscr)
     !> Initialize the flow field for a mixing layer.
     !> This subroutine sets the velocity field (ux, uy, uz) to simulate the
     !> interaction of two streams of fluid with different velocities, creating
@@ -381,8 +383,6 @@ contains
     !> l0       : Characteristic length scale for the mixing layer
     !> ratio    : Ratio of maximum velocity to the characteristic velocity
     !> nscr     : Flag for scalar transport equation (0 or 1)
-    !> ici      : Initial condition index (specifies the type of initialization)
-    !> init_noise_x, init_noise_y, init_noise_z : Noise parameters (not used here)
     !>
     !> OUTPUT:
     !> ux(nx, ny, nz)  : X-component of velocity initialized for the mixing layer
@@ -394,19 +394,22 @@ contains
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
     real(kind=8), intent(in) :: l0, ratio 
-    real(kind=8), intent(in) :: init_noise_x, init_noise_y, init_noise_z
-    integer, intent(in) :: nx, ny, nz, nscr, ici
+    integer, intent(in) :: nx, ny, nz, nscr
 
     real(kind=8), parameter :: tiny_value = 1.d-12
-    real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
+    real(kind=8) :: u1, u2, t1, t2, t3, theta_o
     real(kind=8) :: A, x_disturb
     real(kind=8) :: pi
     integer :: i, j, k, kx
 
     print *, "* Condition Initiale for a Mixing Layer simulation"
 
+    if (ici == 1) then
+       A = init_noise_x * init_noise_y * init_noise_z
+       A = A / ratio
+    end if
     pi = acos(-1.d0)
-    if (ratio < tiny_value) then
+    if (ratio < tiny_value .and. ratio > -tiny_value) then
        u2 = u0
        u1 = 0.d0
     else
@@ -430,8 +433,8 @@ contains
        end do
     end do
     if (ici == 1 .or. ici == 3) then
-       A = init_noise_y * u0
-       kx = 1
+       A = 0.03d0 * u0
+       kx = 3
        dy = y(2) - y(1)
        call calcul_u_base(u_base, ux(1,:,1), dy)
        do k = 1, nz
@@ -447,41 +450,6 @@ contains
 
     return
   end subroutine initialize_mixing_layer
-
-  subroutine get_inflow(inflow, ux, uy, uz, pp)
-    !> Extract the inflow conditions from the flow field variables.
-    !>
-    !> This subroutine extracts the inflow conditions from the flow field 
-    !> variables, including velocity components (ux, uy, uz) and pressure (pp), 
-    !> at the inflow boundary (x = 0).
-    !>
-    !> INPUT:
-    !> ux(nx,ny,nz) : X-component of velocity field
-    !> uy(nx,ny,nz) : Y-component of velocity field
-    !> uz(nx,ny,nz) : Z-component of velocity field
-    !> pp(nx,ny,nz) : Pressure field
-    !>
-    !> OUTPUT:
-    !> inflow(nx,ny,4): Array containing the inflow conditions extracted 
-    !>                  from the velocity and pressure fields. The last 
-    !>                  dimension contains the following components:
-    !>                  - inflow(:,:,1) : X-component of velocity at 
-    !>                    the inflow boundary
-    !>                  - inflow(:,:,2) : Y-component of velocity at 
-    !>                    the inflow boundary
-    !>                  - inflow(:,:,3) : Z-component of velocity at 
-    !>                    the inflow boundary
-    !>                  - inflow(:,:,4) : Pressure at the inflow boundary
-    real(kind=8), intent(out) :: inflow(:,:,:)
-    real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:), pp(:,:,:)
-
-    inflow(:,:,1) = ux(1,:,:)
-    inflow(:,:,2) = uy(1,:,:)
-    inflow(:,:,3) = uz(1,:,:)
-    inflow(:,:,4) = pp(1,:,:)
-
-    return
-  end subroutine get_inflow
 
   subroutine set_initialization_type(typesim)
     !> Sets the function pointer to the appropriate initialization function
@@ -579,6 +547,64 @@ contains
 
   end subroutine add_turbulent_init
 
+    subroutine add_oscillations_init(ux, uy, uz, &
+       nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, &
+       typesim)
+    !> Add oscillatory initialization to the velocity components.
+    !>
+    !> INPUT:
+    !> nx           : Number of grid points in the x-direction
+    !> ny           : Number of grid points in the y-direction
+    !> nz           : Number of grid points in the z-direction
+    !> dy           : Grid spacing in the y-direction
+    !> u0           : Reference Velocity of the flow
+    !> init_noise_x : Amplitude of the x-direction oscillations
+    !> init_noise_y : Amplitude of the y-direction oscillations
+    !> init_noise_z : Amplitude of the z-direction oscillations
+    !> typesim      : Type of simulation for normalization of u_base
+    !> OUTPUT:
+    !> ux           : X-component of velocity field with oscillations
+    !> uy           : Y-component of velocity field with oscillations
+    !> uz           : Z-component of velocity field with oscillations
+    real(kind=8), intent(inout) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+    real(kind=8), intent(in) :: dy, u0, init_noise_x, init_noise_y, init_noise_z
+    integer, intent(in) :: nx, ny, nz, typesim
+    real(kind=8), dimension(ny) :: u_base
+    real(kind=8) :: phase_x, phase_y, phase_z
+    integer :: i, j, k
+    integer, parameter :: kx = 3, ky = 3, kz = 3  ! Number of oscillations in each direction
+    real(kind=8), parameter :: pi = acos(-1.d0)
+
+    ! Compute base velocity profile
+    call calcul_u_base(u_base, ux(1,:,1), dy)
+    if (typesim == 5) then
+       call normalize1D(u_base, 0.0d0)
+    else
+       call normalize1D(u_base, -1.d0)
+    end if
+
+    ! Add oscillations to velocity components
+    do k = 1, nz
+       phase_z = 2.d0 * pi * kz * z(k) / zlz
+       do j = 1, ny
+          phase_y = 2.d0 * pi * ky * y(j) / yly
+          do i = 1, nx
+             phase_x = 2.d0 * pi * kx * x(i) / xlx
+
+             ux(i,j,k) = ux(i,j,k) + &
+                  u0 * init_noise_x * u_base(j) * sin(phase_x)
+             uy(i,j,k) = uy(i,j,k) + &
+                  u0 * init_noise_y * u_base(j) * sin(phase_y)
+             uz(i,j,k) = uz(i,j,k) + &
+                  u0 * init_noise_z * u_base(j) * sin(phase_z)
+          end do
+       end do
+    end do
+
+    return
+
+  end subroutine add_oscillations_init
+
   subroutine apply_2dsim(uz)
     !> Apply 0. to uz velocity compoment in a 2d case
     !>
@@ -593,4 +619,3 @@ contains
   end subroutine apply_2dsim
 
 end module initial_conditions
-

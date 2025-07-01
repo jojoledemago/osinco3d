@@ -2,6 +2,7 @@ module les_turbulence
   use IOfunctions
   use derivation
   use initialization
+  use functions
   implicit none
 
 contains

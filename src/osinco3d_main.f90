@@ -4,7 +4,6 @@ program osinco3d
   use initial_conditions
   use integration
   use visualization
-  use boundary_conditions
   use les_turbulence
   implicit none
 
@@ -33,8 +32,7 @@ program osinco3d
   if (typesim > 0) then
      call set_initialization_type(typesim)
      call init_condition(ux, uy, uz, pp, phi, x, y, z, &
-          nx, ny, nz, l0, ratio, nscr, ici, &
-          init_noise_x, init_noise_y, init_noise_z)
+          nx, ny, nz, l0, ratio, nscr)
      time0 = 0.d0
   else
      call get_filename(fields_name_file)
@@ -42,19 +40,18 @@ program osinco3d
      time = time0
      phi = 0.d0
   end if
-  if (nbcx1 == INFLOW_OUTFLOW) then
-     call get_inflow(inflow, ux, uy, uz, pp)
-  end if
   if (ici == 2 .or. ici == 3) then
      call add_turbulent_init(ux, uy, uz, &
           nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, typesim)
   end if
-  if (iin == 1) then
-     call calcul_u_base(u_base, ux(1,:,kpro), dy)
+  if (ici == 1 .or. ici == 3) then
+      call add_oscillations_init(ux, uy, uz, &
+          nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, typesim)
   end if
   if (sim2d == 1) then
      call apply_2dsim(uz)
   end if
+  call print_velocity_values(ux, uy, uz)
   call rotational(rotx, roty, rotz, ux, uy, uz, dx, dy, dz, nx, ny, nz)
   call calculate_Q_criterion(q_criterion, ux, uy, uz, dx, dy, dz, nx, ny, nz)
   call divergence(divu, ux, uy, uz, &
@@ -105,11 +102,8 @@ program osinco3d
      write(*,'(A8, F10.3, A1, F6.0)') "TIME = ", time, "/", time0 + itstop * dt
      write(*,*) "========================"
      call old_values(ux, uy, uz, old_ux, old_uy, old_uz, nx, ny, nz)
-     if (iin == 1) then
-        call add_u_noise(ux, uy, uz, inflow_noise, u_base)
-     end if
      call predict_velocity(ux_pred, uy_pred, uz_pred, ux, uy, uz, &
-          fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
+          fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, &
           dx, dy, dz, nx, ny, nz, iles, cs, delta, nu_t)
      call correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
           nx, ny, nz, dt, omega, eps, kmax, idyn)
@@ -117,7 +111,7 @@ program osinco3d
           pp, dt, dx, dy, dz, nx, ny, nz)
      if (nscr == 1) then
         call transeq(phi, ux, uy, uz, src, fphi, re, sc, adt, bdt, cdt, &
-             itime, itscheme, dx, dy, dz, nx, ny, nz)
+             itime, itscheme, dx, dy, dz, nx, ny, nz, iles, nu_t)
      end if
      call divergence(divu_pred, ux_pred, uy_pred, uz_pred, &
           dx, dy, dz, nx, ny, nz, 1)
@@ -128,13 +122,6 @@ program osinco3d
      divu_stats = function_stats(divu, nx, ny, nz)
      call print_divu_statistics(divu_stats, .false.)
 
-     if (nbcx1 == INFLOW_OUTFLOW) then
-        call velocity_dirichlet_bc_x0(ux, uy, uz, inflow)
-     end if
-     if (nbcxn == INFLOW_OUTFLOW) then
-        call apply_outflow_condition(ux, uy, uz, pp, &
-             old_ux, old_uy, old_uz, u0, dx, dy, dz, dt)
-     end if
      call print_velocity_values(ux, uy, uz)
      if (nscr == 1) call print_scalar_values(phi)
      call compute_cfl(cflx, cfly, cflz, ux, uy, uz, dx, dy, dz, dt)

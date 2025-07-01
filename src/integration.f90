@@ -1,11 +1,9 @@
 module integration
   use functions
   use poisson
-  use poisson_multigrid
   use derivation
   use initialization
   use diffoper
-  use boundary_conditions
   use les_turbulence
   use IOfunctions, only: print_in_outflow_rate, write_velocity_diverged 
   implicit none
@@ -13,7 +11,7 @@ module integration
 contains
 
   subroutine predict_velocity(ux_pred, uy_pred, uz_pred, ux, uy, uz, &
-       fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, inflow, &
+       fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, &
        dx, dy, dz, nx, ny, nz, iles, cs, delta, nu_t)
 
     !> Predicts the velocity field for a fluid dynamics simulation using 
@@ -58,7 +56,6 @@ contains
     real(kind=8), dimension(3), intent(in) :: adt, bdt, cdt
     real(kind=8), dimension(:,:,:), intent(inout) :: ux, uy, uz
     real(kind=8), dimension(:,:,:), intent(inout) :: nu_t
-    real(kind=8), dimension(:,:,:), intent(in) :: inflow
     real(kind=8), dimension(:,:,:,:), intent(inout) :: fux, fuy, fuz
     real(kind=8), dimension(:,:,:), intent(out) :: ux_pred, uy_pred, uz_pred
 
@@ -110,11 +107,8 @@ contains
     if (iles == 1) then
        print *, " LES model calculation"
        call calculate_nu_t(nu_t, ux, uy, uz, dx, dy, dz, cs, delta)
-       !call calculate_tau_ij(tau_ij, ux, uy, uz, dx, dy, dz, nu_t)
-       !call calculate_dtau_ij_dxj(dtau_dx, dtau_dy, dtau_dz, &
-       !     tau_ij, dx, dy, dz)
     else 
-        nu_t = 0.0d0
+       nu_t = 0.0d0
     end if
     nu_eff = onere + nu_t
 
@@ -177,16 +171,6 @@ contains
     uz_pred = uz + adu * fuz(:, :, :, 1) + &
          bdu * fuz(:, :, :, 2) + &
          cdu * fuz(:, :, :, 3)
-
-    ! Case inflow/outflow x-boundary-condition for u_pred: apply neuman inflow 
-    ! for x0 and neuman condition for xmax
-    if (nbcx1 == INFLOW_OUTFLOW) then
-       !call velocity_neuman_bc_x0(ux_pred, uy_pred, uz_pred)
-       call velocity_dirichlet_bc_x0(ux, uy, uz, inflow)
-    end if
-    if (nbcxn == INFLOW_OUTFLOW) then
-       call velocity_neuman_bc_xn(ux_pred, uy_pred, uz_pred)
-    end if
 
     select case(itscheme)
     case(2)
@@ -252,15 +236,9 @@ contains
 
     ! Prepare the right-hand side term for the Poisson equation
     rhs = divu_pred / dt
-    if (nbcx1 == INFLOW_OUTFLOW) then
-       call pressure_neuman_bc_x0(rhs)
-       call pressure_neuman_bc_xn(rhs)
-    end if
 
-    ! Solve the Poisson equation to update the pressure field
-    call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, &
-         omega, eps, kmax, idyn)
-
+       call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, &
+            omega, eps, kmax, idyn)
     ! Free allocated memory
     deallocate(divu_pred, rhs)
     print *,""
@@ -344,7 +322,7 @@ contains
   end subroutine correct_velocity
 
   subroutine transeq(phi, ux, uy, uz, src, fphi, re, sc, adt, bdt, cdt, &
-       itime, itscheme, dx, dy, dz, nx, ny, nz)
+       itime, itscheme, dx, dy, dz, nx, ny, nz, iles, nu_t)
     !> Solves the transport equation for a scalar variable.
     !> INPUT:
     !> - phi(nx,ny,nz)   : Scalar variable to be transported
@@ -361,19 +339,22 @@ contains
     !> - itscheme        : Integration scheme indicator (1=Euler, 2=AB2, 3=AB3)
     !> - dx, dy, dz      : Mesh spacing in x, y, z directions
     !> - nx, ny, nz      : Number of grid points in x, y, z directions
+    !> - iles            : Integer for apply LES 
+    !> - nu_t(nx, ny, nz): Turbulent viscosity 
     !> OUTPUT:
     !> - phi(nx,ny,nz)   : Scalar variable updated after integration
     !> - fphi(nx,ny,nz,3): Flux computed for 3 time step
 
-    integer, intent(in) :: itime, itscheme, nx, ny, nz
-    real(kind=8), dimension(nx,ny,nz), intent(in) :: ux, uy, uz, src
+    integer, intent(in) :: itime, itscheme, nx, ny, nz, iles
+    real(kind=8), dimension(nx,ny,nz), intent(in) :: ux, uy, uz, src, nu_t
     real(kind=8), dimension(3), intent(in) :: adt, bdt, cdt
     real(kind=8), intent(in) :: re, sc, dx, dy, dz
 
     real(kind=8), dimension(nx,ny,nz), intent(inout) :: phi
     real(kind=8), dimension(nx,ny,nz,3), intent(inout) :: fphi
 
-    real(kind=8) :: adu, bdu, cdu, oneresc
+    real(kind=8) :: adu, bdu, cdu 
+    real(kind=8), dimension(:,:,:), allocatable :: alpha_eff
     real(kind=8), dimension(:,:,:), allocatable :: dphidx, dphidy, dphidz
     real(kind=8), dimension(:,:,:), allocatable :: dphidx2, dphidy2, dphidz2
 
@@ -382,6 +363,7 @@ contains
 
     allocate(dphidx(nx,ny,nz), dphidy(nx,ny,nz), dphidz(nx,ny,nz))
     allocate(dphidx2(nx,ny,nz), dphidy2(nx,ny,nz), dphidz2(nx,ny,nz))
+    allocate(alpha_eff(nx,ny,nz))
 
     if (itscheme == 1 .or. itime == 1) then
        print *, " Euler"
@@ -406,7 +388,11 @@ contains
        stop
     end if
 
-    oneresc = 1.d0 / (re * sc)
+    if (iles == 1) then
+       alpha_eff = 1.d0 / (re * sc) + nu_t / sc
+    else
+       alpha_eff = 1.d0 / (re * sc)
+    end if
 
     call derxp(dphidx, phi, dx)
     call deryp(dphidy, phi, dy)
@@ -416,7 +402,7 @@ contains
     call deryyp(dphidy2, phi, dy)
     call derzzp(dphidz2, phi, dz)
 
-    fphi(:,:,:,1) = oneresc * (dphidx2 + dphidy2 + dphidz2) - &
+    fphi(:,:,:,1) = alpha_eff * (dphidx2 + dphidy2 + dphidz2) - &
          (ux * dphidx + uy * dphidy + uz * dphidz) + src
 
     phi = phi + adu * fphi(:, :, :, 1) + &
@@ -439,91 +425,6 @@ contains
     return
 
   end subroutine transeq
-
-  subroutine apply_outflow_condition(ux, uy, uz, pp, old_ux, old_uy, old_uz, &
-       u0, dx, dy, dz, dt)
-    !> Apply outflow conditions for velocity components and pressure at the 
-    !> outflow boundary (x = nx).
-    !>
-    !> This subroutine applies outflow boundary conditions to the velocity
-    !> components (ux, uy, uz) and pressure (pp) at the outflow boundary
-    !> (x = nx). It first updates the velocity components using a Dirichlet
-    !> condition, then adjusts the velocity components based on the pressure
-    !> gradients in the y and z directions to ensure a smooth outflow.
-    !>
-    !> INPUT:
-    !> ux(nx,ny,nz)     : X-component of the velocity field.
-    !> uy(nx,ny,nz)     : Y-component of the velocity field.
-    !> uz(nx,ny,nz)     : Z-component of the velocity field.
-    !> pp(nx,ny,nz)     : Pressure field.
-    !> old_ux(nx,ny,nz) : X-component of the velocity field at itime-1.
-    !> old_uy(nx,ny,nz) : Y-component of the velocity field at itime-1.
-    !> old_uz(nx,ny,nz) : Z-component of the velocity field at itime-1.
-    !> u0               : Reference veolcity 
-    !> dx               : Mesh size step in the x-direction.
-    !> dy               : Mesh size step in the y-direction.
-    !> dz               : Mesh size step in the z-direction.
-    !> dt               : Time step size.
-    !>
-    !> OUTPUT:
-    !> ux(:,:,:)    : Updated X-component of the velocity field with outflow
-    !> conditions applied.
-    !> uy(:,:,:)    : Updated Y-component of the velocity field with outflow
-    !> conditions applied.
-    !> uz(:,:,:)    : Updated Z-component of the velocity field with outflow
-    !> conditions applied.
-
-    real(kind=8), intent(inout) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
-    real(kind=8), intent(in) :: old_ux(:,:,:), old_uy(:,:,:), old_uz(:,:,:)
-    real(kind=8), intent(in) :: pp(:,:,:)
-    real(kind=8), intent(in) :: u0, dx, dy, dz, dt
-
-    real(kind=8), dimension(size(ux,2),size(ux,3)) :: bux, buy, buz
-    real(kind=8), dimension(size(pp,1), size(pp,2),size(pp,3)) :: dpdy
-    real(kind=8), dimension(size(pp,1), size(pp,2),size(pp,3)) :: dpdz
-    real(kind=8) :: um_in, um_out
-    integer :: nx, ny, nz
-    integer :: j, k
-
-    nx = size(ux,1)
-    ny = size(ux,2)
-    nz = size(ux,3)
-    call velocity_dirichlet_bc_xn(bux, buy, buz, old_ux, old_uy, old_uz, &
-         u0, dx, dt, 3) !> 1 -> use u0 
-    !> 2 -> use velocity mean value of (ux(nx-1, :, :) and ux(nx, :, :))
-    !> 3 -> use discret velocity value of ux(nx-1, :, :)
-    call deryp(dpdy, pp, dy)
-    call derzp(dpdz, pp, dz)
-
-    !Computation of the flow rate Inflow/Outflow
-    um_in = 0.d0
-    do k = 1, nz
-       do j = 1, ny
-          um_in = um_in + ux(1,j,k)
-       end do
-    end do
-    um_in = um_in / real(ny * nz, kind=8)
-    um_out = 0.d0
-    do k = 1, nz
-       do j = 1, ny
-          um_out = um_out + bux(j,k)
-       end do
-    end do
-    um_out = um_out / real(ny * nz, kind=8)
-
-    call print_in_outflow_rate(um_in,um_out)
-    do k = 1, nz
-       do j = 1, ny
-          bux(j,k) = bux(j,k) - um_out + um_in
-       end do
-    end do
-
-    ux(nx,:,:) = bux(:,:)
-    uy(nx,:,:) = buy(:,:) !+ dpdy(nx,:,:) * dt
-    uz(nx,:,:) = buz(:,:) !+ dpdz(nx,:,:) * dt
-
-    return
-  end subroutine apply_outflow_condition
 
 end module integration
 

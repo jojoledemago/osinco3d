@@ -37,194 +37,187 @@ contains
     print *, ""
   end subroutine print_osinco3d_title
 
-  subroutine print_parameters()
-    use initialization, only: nx, ny, nz, xlx, yly, zlz, x0, y0, z0, &
-         nbcx1, nbcxn, nbcy1, nbcyn, sim2d, &
-         itscheme, dt, itstart, itstop, &
-         u0, l0, re, typesim, omega, eps, kmax, &
-         nfre, xpro, ypro, zpro, &
-         iin, inflow_noise, &
-         init_noise_x, init_noise_y, init_noise_z, ratio, &
-         iles, cs, idyn
-    implicit none
+subroutine print_parameters()
+  use initialization, only: nx, ny, nz, xlx, yly, zlz, x0, y0, z0, &
+       nbcx1, nbcxn, nbcy1, nbcyn, nbcz1, nbczn, sim2d, &
+       itscheme, dt, itstart, itstop, &
+       u0, l0, re, typesim, omega, eps, kmax, &
+       nfre, xpro, ypro, zpro, &
+       init_noise_x, init_noise_y, init_noise_z, ratio, &
+       iles, cs, idyn, nscr, sc
+  implicit none
 
-    ! Formats
-    character(len=20) :: int_format, float_format1, float_format2
-    int_format = "(I10)"
-    float_format1 = "(F10.3)" ! For values greater than 1
-    float_format2 = "(E17.5)" ! For values less than or equal to 1
+  ! Separator pattern
+  character(len=40) :: sep_line
+  sep_line = "========================================"
 
-    ! Print domain parameters
-    print *, "Domain Parameters:"
-    write(*,*) "  Grid points (nx, ny, nz):"
-    write(*,int_format, advance="no") nx 
-    write(*,int_format, advance="no") ny 
-    write(*,int_format) nz
-    write(*,*) "  Domain dimensions (xlx, yly, zlz):"
-    write(*,float_format1, advance="no") xlx
-    write(*,float_format1, advance="no") yly
-    write(*,float_format1) zlz
-    write(*,*) "  Domain origin (x0, y0, z0):"
-    write(*,float_format1, advance="no") x0
-    write(*,float_format1, advance="no") y0
-    write(*,float_format1) z0
-    print *, ""
+  ! Domain parameters
+  print *, sep_line
+  print *, " DOMAIN PARAMETERS "
+  print *, sep_line
+  write(*,'(A,I10,2X,I10,2X,I10)') " Grid points (nx, ny, nz): ", nx, ny, nz
+  write(*,'(A,3F10.3)') " Domain dimensions (xlx, yly, zlz): ", xlx, yly, zlz
+  write(*,'(A,3F10.3)') " Domain origin (x0, y0, z0): ", x0, y0, z0
+  print *, ""
 
-    ! Print boundary conditions
-    print *, "Boundary Conditions:"
-    write(*,*) "  X-axis: start (nbcx1), end (nbcxn):"
-    write(*,int_format, advance="no") nbcx1
-    write(*,int_format) nbcxn
-    write(*,*) "  Y-axis: start (nbcy1), end (nbcyn):"
-    write(*,int_format, advance="no") nbcy1
-    write(*,int_format) nbcyn
-    write(*,*) "  Z-axis: start (nbcz1), end (nbczn):"
-    write(*,int_format, advance="no") nbcz1
-    write(*,int_format) nbczn
-    write(*,*) "  Simulation dimensionality (sim2d):"
-    write(*,int_format) sim2d
-    print *, ""
+  ! Boundary conditions
+  print *, sep_line
+  print *, " BOUNDARY CONDITIONS "
+  print *, sep_line
+  write(*,'(A,I10,2X,I10)') " X-axis: start (nbcx1), end (nbcxn): ", nbcx1, nbcxn
+  write(*,'(A,I10,2X,I10)') " Y-axis: start (nbcy1), end (nbcyn): ", nbcy1, nbcyn
+  write(*,'(A,I10,2X,I10)') " Z-axis: start (nbcz1), end (nbczn): ", nbcz1, nbczn
+  write(*,'(A,I10)') " Simulation dimensionality (sim2d): ", sim2d
+  print *, ""
 
-    ! Print time integration parameters
-    print *, "Time Integration Parameters:"
-    write(*,*) "  Time scheme (itscheme):"
-    write(*,int_format) itscheme
-    write(*,*) "  Time step (dt):"
-    write(*,float_format2) dt
-    write(*,*) "  Time steps: start (itstart), stop (itstop):"
-    write(*,int_format, advance="no") itstart
-    write(*,int_format) itstop
-    print *, ""
+  ! Time integration parameters
+  print *, sep_line
+  print *, " TIME INTEGRATION PARAMETERS "
+  print *, sep_line
+  write(*,'(A,I10)') " Time scheme (itscheme): ", itscheme
+  write(*,'(A,E17.5)') " Time step (dt): ", dt
+  write(*,'(A,I10,2X,I10)') " Time steps: start (itstart), stop (itstop): ", itstart, itstop
+  print *, ""
 
-    ! Print flow parameters
-    print *, "Flow Parameters:"
-    write(*,*) "  Initial velocity (u0):"
-    write(*,float_format1) u0
-    write(*,*) "  Characteristic length (l0):"
-    write(*,float_format1) l0
-    write(*,*) "  Reynolds number (re):"
-    write(*,float_format1) re
-    write(*,*) "  Simulation type (typesim):"
-    write(*,int_format) typesim
-    print *, ""
+  ! Flow parameters
+  print *, sep_line
+  print *, " FLOW PARAMETERS "
+  print *, sep_line
+  write(*,'(A,F10.3)') " Initial velocity (u0): ", u0
+  write(*,'(A,F10.3)') " Characteristic length (l0): ", l0
+  write(*,'(A,F10.3)') " Reynolds number (re): ", re
+  write(*,'(A,I10)') " Simulation type (typesim): ", typesim
+  print *, ""
 
-    ! Print Poisson solver parameters
-    print *, "Poisson Solver Parameters:"
-    write(*,*) "  Relaxation parameter (omega):"
-    write(*,float_format1) omega
-    write(*,*) "  Convergence criterion (eps):"
-    write(*,float_format2) eps
-    write(*,*) "  Maximum iterations (kmax):"
-    write(*,int_format) kmax
-    if (idyn == 1) then
-       write(*,*) "  Dynamic procedure for omega: on"
-    else 
-       write(*,*) "  Dynamic procedure for omega: off"
-    end if
-    print *, ""
+  ! Poisson solver parameters
+  print *, sep_line
+  print *, " POISSON SOLVER PARAMETERS "
+  print *, sep_line
+  write(*,'(A,F10.3)') " Relaxation parameter (omega): ", omega
+  write(*,'(A,E17.5)') " Convergence criterion (eps): ", eps
+  write(*,'(A,I10)') " Maximum iterations (kmax): ", kmax
+  if (idyn == 1) then
+     print *, "Dynamic procedure for omega: ON"
+  else 
+     print *, "Dynamic procedure for omega: OFF"
+  end if
+  print *, ""
 
-    ! LES parameters
-    if (iles == 1) then
-       print *, "LES Parameters:"
-       write(*,*) "  Smagorinsky constant (Cs):"
-       write(*,float_format1) cs
-       print *, ""
-    end if
+  ! LES parameters (if relevant)
+  if (iles == 1) then
+     print *, sep_line
+     print *, " LARGE EDDY SIMULATION (LES) PARAMETERS "
+     print *, sep_line
+     ! Ajoute ici les paramètres LES si nécessaire, par ex :
+     write(*,'(A,F10.3)') " Smagorinsky constant (cs): ", cs
+     print *, ""
+  end if
 
-    ! Print Scalar parameters
-    write(*,*) "Flag for scalar transport resolution"
-    write(*,int_format) nscr
-    write(*,*) "  Schmidt number (re):"
-    write(*,float_format1) sc
-    print *, ""
+  ! Scalar transport parameters
+  print *, sep_line
+  print *, "  SCALAR TRANSPORT PARAMETERS "
+  print *, sep_line
+  write(*,'(A,I10)') " Scalar transport resolution flag (nscr): ", nscr
+  write(*,'(A,F10.3)') " Schmidt number (sc): ", sc
+  print *, ""
 
-    ! Print visualization parameters
-    print *, "Visualization Parameters:"
-    write(*,*) "  Frequency (nfre):"
-    write(*,int_format) nfre
-    write(*,*) "  Profile coordinates (xpro, ypro, zpro):"
-    write(*,float_format1, advance="no") xpro
-    write(*,float_format1, advance="no") ypro
-    write(*,float_format1) zpro
-    print *, ""
+  ! Visualization parameters
+  print *, sep_line
+  print *, " VISUALIZATION PARAMETERS "
+  print *, sep_line
+  write(*,'(A,I10)') " Frequency (nfre): ", nfre
+  write(*,'(A)') " Profile coordinates (xpro, ypro, zpro): "
+  write(*,'(3F10.3)') xpro, ypro, zpro
+  print *, ""
 
-    ! Print inflow initialization parameters
-    print *, "Inflow Initialization Parameters:"
-    write(*,*) "  Inflow condition (iin):"
-    write(*,int_format) iin
-    write(*,*) "  Inflow noise intensity (inflow_noise):"
-    write(*,float_format1) inflow_noise
-    write(*,*) "  Initialization noise intensity (init_noise):"
-    write(*,float_format1, advance="no") init_noise_x
-    write(*,float_format1, advance="no") init_noise_y
-    write(*,float_format1) init_noise_z
-    write(*,*) "  Ratio:"
-    write(*,float_format1) ratio
-    print *, ""
+  ! Inflow initialization parameters
+  print *, sep_line
+  print *, " INFLOW INITIALIZATION PARAMETERS "
+  print *, sep_line
+  write(*,'(A)') " Initialization noise intensity (init_noise_x, y, z): "
+  write(*,'(3F10.3)') init_noise_x, init_noise_y, init_noise_z
+  write(*,'(A,F10.3)') " Ratio: ", ratio
+  print *, sep_line
+  print *, ""
 
-  end subroutine print_parameters
+end subroutine print_parameters
 
-  subroutine print_variables()
-    use initialization, only: nx, ny, nz, xlx, yly, zlz, x, y, z, u0, re, cfl, cnu, dt, &
-         adt, bdt, cdt, t_ref, dx, dy, dz, itstart, itstop, ipro, jpro, kpro, itscheme, delta, iles
-    implicit none
-    real(kind=8) :: dmin, cnux, cnuy, cnuz
+subroutine print_variables()
+  use initialization, only: nx, ny, nz, xlx, yly, zlz, x, y, z, u0, re, cfl, cnu, dt, &
+       adt, bdt, cdt, t_ref, dx, dy, dz, itstart, itstop, ipro, jpro, kpro, itscheme, delta, iles, cs
+  implicit none
 
-    ! Formats
-    character(len=20) :: int_format, float_format1, float_format2
-    int_format = "(I10)"
-    float_format1 = "(F7.2)" ! For values greater than 1
-    float_format2 = "(E14.5)" ! For values less than or equal to 1
+  real(kind=8) :: dmin, cnux, cnuy, cnuz
+  character(len=40) :: sep_line
 
-    ! Calculate minimum grid spacing
-    dmin = min(dx, min(dy, dz))
+  sep_line       = "========================================"
 
-    ! Calculate cnu
-    cnu = 1.d0 / re * (dt / (dmin * dmin))
+  ! Compute grid minimum spacing and CFL diffusivity
+  dmin = min(dx, min(dy, dz))
+  cnu = 1.d0 / re * (dt / (dmin * dmin))
 
-    ! Adjust dt if cnu > 0.1
-    if (cnu > 0.1d0) then
-       dt = 0.1d0 * dmin * dmin * re 
-       print *, "Predominant viscous terms, cnu =", cnu
-    end if
+  ! Adjust dt if necessary
+  if (cnu > 0.1d0) then
+     dt = 0.1d0 * dmin * dmin * re 
+     print *, "Predominant viscous terms, adjusted dt"
+     print *, "Updated cnu =", cnu
+  end if
 
-    cnux = 1.d0 / re * (dt / (dx * dx))
-    cnuy = 1.d0 / re * (dt / (dy * dy))
-    cnuz = 1.d0 / re * (dt / (dz * dz))
+  cnux = 1.d0 / re * (dt / (dx * dx))
+  cnuy = 1.d0 / re * (dt / (dy * dy))
+  cnuz = 1.d0 / re * (dt / (dz * dz))
 
-    ! Print calculated variables
-    print *, "Calculated Variables:"
+  ! ====== PRINTING START ======
+  print *, sep_line
+  print *, " CALCULATED VARIABLES"
+  print *, sep_line
 
-    write(*,*) "  Grid spacing (dx, dy, dz):"
-    write(*, float_format2) dx
-    write(*, float_format2) dy
-    write(*, float_format2) dz
-    write(*,*) "  CFL:"
-    write(*, float_format2) cfl
-    write(*,*) "  CFL_diff:"
-    write(*,'(A14,E12.5)') "   CFL_diff_x:", cnux
-    write(*,'(A14,E12.5)') "   CFL_diff_y:", cnuy
-    write(*,'(A14,E12.5)') "   CFL_diff_z:", cnuz
-    write(*,*) "  Coefficients for time integration (adt, bdt, cdt):"
-    write(*, float_format2) adt(itscheme)
-    write(*, float_format2) bdt(itscheme)
-    write(*, float_format2) cdt(itscheme)
-    write(*,*) "  Simulation time (time):"
-    write(*,*) "  t_ref"
-    write(*, '(F9.1)') t_ref
-    write(*,*) "  t_end"
-    write(*, '(F9.1)') dt * (itstop - itstart)
-    write(*,*) "  Profile index (ipro, jpro, kpro):"
-    write(*,'(A5,I4,A4,F7.3)') "   x(", ipro,") = ", x(ipro)
-    write(*,'(A5,I4,A4,F7.3)') "   y(", jpro,") = ", y(jpro)
-    write(*,'(A5,I4,A4,F7.3)') "   z(", kpro,") = ", z(kpro)
-    if (iles == 1) then
-       write(*,*) "  ++++++++++++++"
-       write(*,*) "  LES simulation"
-       write(*,'(A21,E12.5)') "   Filter size delta:", delta
-    end if
-    print *, ""
-  end subroutine print_variables
+  ! Grid spacing
+  write(*,'(A)') " Grid spacing (dx, dy, dz): " 
+   write(*,'(E10.3, E10.3, E10.3)') dx, dy, dz
+   print *, ""
+
+  ! CFL numbers
+  write(*,'(A,E10.3)') " CFL number (cfl): ", cfl
+  write(*,'(A,E10.3)') " CFL diffusivity in x  (cnux): ", cnux
+  write(*,'(A,E10.3)') " CFL diffusivity in y  (cnuy): ", cnuy
+  write(*,'(A,E10.3)') " CFL diffusivity in z  (cnuz): ", cnuz
+
+  ! Time integration coefficients
+  print *, sep_line
+  print *, " TIME INTEGRATION COEFFICIENTS"
+  print *, sep_line
+  write(*,'(A,E10.3)') " adt: ", adt(itscheme)
+  write(*,'(A,E10.3)') " bdt: ", bdt(itscheme)
+  write(*,'(A,E10.3)') " cdt: ", cdt(itscheme)
+
+  ! Time reference and total simulated time
+  print *, sep_line
+  print *, " TIME INFORMATION"
+  print *, sep_line
+  write(*,'(A,F9.1)') " Reference time (t_ref): ", t_ref
+  write(*,'(A,F9.1)') " Total simulated time (t_end): ", dt * (itstop - itstart)
+
+  ! Profile point info
+  print *, sep_line
+  print *, " PROFILE POSITION"
+  print *, sep_line
+  write(*,'(A,I4,A,F7.3)') " x(", ipro, ") = ", x(ipro)
+  write(*,'(A,I4,A,F7.3)') " y(", jpro, ") = ", y(jpro)
+  write(*,'(A,I4,A,F7.3)') " z(", kpro, ") = ", z(kpro)
+
+  ! LES info (if used)
+  if (iles == 1) then
+     print *, sep_line
+     print *, " LES PARAMETERS"
+     print *, sep_line
+     write(*,'(A,E12.5)') " Filter size (delta): ", delta
+     write(*,'(A,F5.2)') " Smagorinsky constant (cs): ", cs
+  end if
+
+  print *, sep_line
+  print *, ""
+end subroutine print_variables
 
   subroutine get_machine_name(machine_name, istat)
     character(len=64), intent(out) :: machine_name

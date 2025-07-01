@@ -106,6 +106,9 @@ def read_fields(filename):
         pp = np.fromfile(f, dtype=np.float64, count=n).reshape((nx, ny, nz), order='F')
     return time, x, y, z, ux, uy, uz, pp
 
+def periodic_gradient(f, dx, axis):
+    return (np.roll(f, -1, axis=axis) - np.roll(f, 1, axis=axis)) / (2 * dx)
+
 def plot_divergence_planes(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, save_fig=None, fig_name=None):
     # Compute divergence of the velocity field
     div = (
@@ -113,7 +116,7 @@ def plot_divergence_planes(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, sa
         np.gradient(uy, y, axis=1, edge_order=2) +
         np.gradient(uz, z, axis=2, edge_order=2)
     )
-    
+
     # Get global statistics
     div_abs = np.abs(div)
     div_min = np.min(div_abs)
@@ -532,6 +535,64 @@ def plot_planar_jet_profiles(x, y, z, ux, uy, uz, x_plot, z_plot, time, u_jet, r
         plt.show()
 
     return delta_j, theta, re_delta_j, re_theta
+
+def compute_Re_lambda(ux, uy, uz, x, y, z, nu):
+    """
+    Compute the Taylor-scale Reynolds number from a 3D velocity field.
+
+    Parameters
+    ----------
+    ux, uy, uz : ndarray (nx, ny, nz)
+        Components of the velocity field.
+    x, y, z :  ndarray (nx), (ny), (nz)
+        Grid coordinates in x, y, z directions.
+    nu : float
+        Kinematic viscosity.
+
+    Returns
+    -------
+    Re_lambda : float
+        Taylor-scale Reynolds number.
+    """
+    # Compute RMS velocity
+    u2 = ux**2 + uy**2 + uz**2
+    urms = np.sqrt(np.mean(u2))
+
+    # Compute velocity gradients
+    dudx = np.gradient(ux, x, axis=0, edge_order=2)
+    dudy = np.gradient(ux, y, axis=1, edge_order=2)
+    dudz = np.gradient(ux, z, axis=2, edge_order=2)
+
+    dvdx = np.gradient(uy, x, axis=0, edge_order=2)
+    dvdy = np.gradient(uy, y, axis=1, edge_order=2)
+    dvdz = np.gradient(uy, z, axis=2, edge_order=2)
+
+    dwdx = np.gradient(uz, x, axis=0, edge_order=2)
+    dwdy = np.gradient(uz, y, axis=1, edge_order=2)
+    dwdz = np.gradient(uz, z, axis=2, edge_order=2)
+
+    # Compute strain-rate tensor squared S_ij^2
+    sij2 = (
+        dudx**2 + dvdy**2 + dwdz**2 +
+        0.5 * ((dudy + dvdx)**2 + (dudz + dwdx)**2 + (dvdz + dwdy)**2)
+    ) * 0.5
+
+    # Compute dissipation rate
+    eps = 2 * nu * np.mean(sij2)
+
+    # Taylor microscale
+    lambda_t = np.sqrt(15 * nu * urms**2 / eps)
+
+    # Reynolds number based on Taylor microscale
+    Re_lambda = urms * lambda_t / nu
+
+    print_block("Reynolds de Taylor", [
+        ("eps:", f"{eps:.3e}"),
+        ("lambda:", f"{lambda_t:.3e}"),
+        ("Re_lambda:", f"{Re_lambda:.1f}")
+        ])
+
+    return Re_lambda
 
 def plot_velocity_fluctuations_plan(x, y, z, ux, uy, uz, x_plot, y_plot, z_plot, time, direction='x', save_fig=None, fig_name=None):
     """
@@ -1162,6 +1223,9 @@ def main():
     parser.add_argument('-d', '--divergence', action='store_true',
                         help="Plot divergence div(u) in planes yz, xz, and xy at given positions")
 
+    parser.add_argument('--hit', action='store_true',
+                        help="Compute Re_lambda for Homogeneous Isotrpic Turbulence")
+
     parser.add_argument('--evolution', '-e', action='store_true',
             help="Plot time evolution of key turbulence indicators from all files")
 
@@ -1241,7 +1305,7 @@ def main():
         if args.turbulence:
             plot_energy_spectrum(ux, uy, uz, x, y, z, time,
                 LES=args.les, normalize=True,
-                save_fig=args.pdf,
+                save_fig=args.pdf, re_init=args.reynolds, 
                 fig_name=f"{file_id}_kolmogorov_spectrum.png")
             nut, delta_filter = analyze_turbulent_development(x, y, z, ux, uy, uz, time,
                 re_init=args.reynolds, cs=args.smagorinsky_constant,
@@ -1261,6 +1325,8 @@ def main():
                 args.x, args.y, args.z, time,
                 save_fig=args.pdf,
                 fig_name=f"{file_id}_divergence_planes.png")
+        if args.hit:
+            compute_Re_lambda(ux, uy, uz, x, y, z, 1./args.reynolds)
         
 
         # Collect data for time evolution plots

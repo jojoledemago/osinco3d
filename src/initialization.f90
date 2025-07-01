@@ -28,6 +28,7 @@ module initialization
   ! Poisson resolution 
   real(kind=8) :: omega  !> relaxation parameter (SOR)
   real(kind=8) :: eps    !> Convergence criteria
+  integer :: multigrid   !> if 1 multigrid solver else if 0 SOR solver
   integer :: idyn        !> idyn = 1 : dynamic omega
   integer :: kmax        !> Maximum iterations
 
@@ -38,7 +39,6 @@ module initialization
   ! Boundary conditions for x and y directions
   integer :: nbcx1, nbcxn, nbcy1, nbcyn, nbcz1, nbczn  !> Boundary condition types for the start and end in x and y directions
   !> Inflow fileds
-  real(kind=8), allocatable, dimension(:,:,:) :: inflow
   real(kind=8), allocatable, dimension(:) :: u_base 
   !real(kind=8), allocatable, dimension(:,:) :: u_noise
 
@@ -66,16 +66,14 @@ module initialization
   real(kind=8) :: xpro, ypro, zpro !> x, y, z absisses of the profil for visu
   integer :: ipro, jpro, kpro !> indices of the profil for visu
 
-  ! Turbulence Inflow
-  integer :: iin !> Inflow conditions (0: classic, 1: turbinit)
-  real(kind=8) :: inflow_noise !> Turbulence intensity (1=100%) !! Inflow conditiona
+  ! Turbulence Initit
   integer :: ici !> Initial conditions ((0: classic, 1: turbulent)
   real(kind=8) :: init_noise_x, init_noise_y, init_noise_z !> Turbulence intensity (1=100%) !! Inflow condition
 
   ! Parameters for x and y BC
   integer, parameter :: PERIODIC = 0
   integer, parameter :: FREE_SLIP = 1
-  integer, parameter :: INFLOW_OUTFLOW = 2
+  character(2) :: bc_x, bc_y, bc_z
 
   ! Variables for CPU time evaluation
   real(kind=8) :: go_time, start_time, end_time, sum_elapsed_time
@@ -120,11 +118,10 @@ contains
     namelist /BoundaryConditions/ nbcx1, nbcxn, nbcy1, nbcyn, nbcz1, nbczn, sim2d
     namelist /AdvanceTime/ itscheme, dt, itstart, itstop, irestart
     namelist /FlowParam/ u0, l0, re, typesim, ratio
-    namelist /PoissonEq/ omega, idyn, eps, kmax
+    namelist /PoissonEq/ multigrid, omega, idyn, eps, kmax
     namelist /Scalar/ nscr, sc
     namelist /VisuParameters/ nfre, nsve, initstat, xpro, ypro, zpro
-    namelist /InitInflow/ iin, inflow_noise, ici, &
-         init_noise_x, init_noise_y, init_noise_z
+    namelist /InitInflow/ ici, init_noise_x, init_noise_y, init_noise_z
     namelist /LES/ iles, cs
 
     open(unit=10, file='parameters.o3d', status='old', action='read', iostat=io_status)
@@ -169,7 +166,6 @@ contains
     allocate(nu_t(nx,ny,nz))
     allocate(divu(nx,ny,nz), divu_pred(nx,ny,nz))
     allocate(tt(nx,ny,nz))
-    allocate(inflow(ny,nz,4), u_base(ny))
 
     ux = 0.d0
     uy = 0.d0
@@ -239,11 +235,6 @@ contains
        derxxp => derxxp_11
        derxi => derxi_11
        derxxi => derxxi_11
-    elseif (nbcx1 == INFLOW_OUTFLOW .and. nbcxn == INFLOW_OUTFLOW) then
-       derxp => derx_22
-       derxxp => derxx_22
-       derxi => derx_22
-       derxxi => derxx_22
     else
        print *, "Unrecognized boundarx laxer types for X-axis."
        print *, "nbcx1: ", nbcx1, "nbcxn: ", nbcxn
@@ -291,19 +282,22 @@ contains
 
     if (nbcx1 == PERIODIC .and. nbcxn == PERIODIC .and. &
          nbcy1 == PERIODIC .and. nbcyn == PERIODIC) then
+       bc_x = '00'
+       bc_y = '00'
+       bc_z = '00'
        poisson_solver => poisson_solver_0000
     else if (nbcx1 == PERIODIC .and. nbcxn == PERIODIC .and. &
          nbcy1 == FREE_SLIP .and. nbcyn == FREE_SLIP) then
+       bc_x = '00'
+       bc_y = '11'
+       bc_z = '00'
        poisson_solver => poisson_solver_0011
     else if (nbcx1 == FREE_SLIP .and. nbcxn == FREE_SLIP .and. &
          nbcy1 == FREE_SLIP .and. nbcyn == FREE_SLIP) then
+       bc_x = '11'
+       bc_y = '11'
+       bc_z = '11'
        poisson_solver => poisson_solver_111111
-    else if (nbcx1 == INFLOW_OUTFLOW .and. nbcxn == INFLOW_OUTFLOW .and. &
-         nbcy1 == PERIODIC .and. nbcyn == PERIODIC) then
-       poisson_solver => poisson_solver_2200
-    else if (nbcx1 == INFLOW_OUTFLOW .and. nbcxn == INFLOW_OUTFLOW .and. &
-         nbcy1 == FREE_SLIP .and. nbcyn == FREE_SLIP) then
-       poisson_solver => poisson_solver_2211
     end if
 
     return 

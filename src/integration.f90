@@ -237,8 +237,8 @@ contains
     ! Prepare the right-hand side term for the Poisson equation
     rhs = divu_pred / dt
 
-       call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, &
-            omega, eps, kmax, idyn)
+    call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, &
+         omega, eps, kmax, idyn)
     ! Free allocated memory
     deallocate(divu_pred, rhs)
     print *,""

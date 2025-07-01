@@ -547,7 +547,7 @@ contains
 
   end subroutine add_turbulent_init
 
-    subroutine add_oscillations_init(ux, uy, uz, &
+  subroutine add_oscillations_init(ux, uy, uz, &
        nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, &
        typesim)
     !> Add oscillatory initialization to the velocity components.

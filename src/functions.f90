@@ -1,5 +1,6 @@
 module functions
   implicit none
+
 contains
   function seconds_to_hm(seconds) result(hm)
     implicit none

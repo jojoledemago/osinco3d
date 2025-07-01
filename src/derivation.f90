@@ -162,63 +162,6 @@ contains
 
   end subroutine derxi_11
 
-  subroutine derx_22(df, f, dx)
-
-    ! X first derivation of function f with O(dx6) scheme
-    ! Case for Inflow/Outflow condition
-    ! central difference schemes in the interior 
-    ! one-sided differences at the boundaries
-    !
-    ! INPUT : f(nx, ny, nz)  : flow variable
-    !         dx             : mesh size step
-    ! OUTPUT : df(nx, ny, nz): X derivative of the flow variable
-
-    real(kind=8), intent(in) :: f(:,:,:)
-    real(kind=8), intent(in) :: dx
-    real(kind=8), intent(out) :: df(:,:,:)
-
-    integer :: nx, i
-    real(kind=8) :: twodx, twelvedx, sixtydx
-    real(kind=8) :: a1, b1, c1, a2, a3, b3, a, b, c
-
-    nx = size(f, 1)
-
-    ! Coefitions for derivation
-    twodx    =  2.d0 * dx
-    sixtydx  = 60.d0 * dx
-    twelvedx = 12.d0 * dx
-
-    a1 = 1.d0 / twodx
-    b1 = 4.d0 / twodx
-    c1 = 3.d0 / twodx
-
-    a2 = 1.d0 / twodx
-
-    a3 = 1.d0 / twelvedx
-    b3 = 8.d0 / twelvedx
-
-    a  =  1.d0 / sixtydx
-    b  =  9.d0 / sixtydx
-    c  = 45.d0 / sixtydx
-
-    df(1, :, :) = -a1 * f(3, :, :) + b1 * f(2, :, :) - c1 * f(1, :, :)
-    df(2, :, :) =  a2 * f(3, :, :) - a2 * f(1, :, :)
-    df(3, :, :) = -a3 * f(5, :, :) + b3 * f(4, :, :) - &
-         b3 * f(2, :, :) + a3 * f(1, :, :)
-    do i = 4, nx-3
-       df(i, :, :) = a * (f(i+3, :, :) - f(i-3, :, :)) - &
-            b * (f(i+2, :, :) - f(i-2, :, :)) + &
-            c * (f(i+1, :, :) - f(i-1, :, :))
-    end do
-    df(nx-2, :, :) = -a3 * f(nx, :, :) + b3 * f(nx-1, :, :) - &
-         b3 * f(nx-3, :, :) + a3 * f(nx-4, :, :)
-    df(nx-1, :, :) =  a2 * f(nx, :, :) - a2 * f(nx-2, :, :)
-    df(nx  , :, :) =  c1 * f(nx, :, :) - b1 * f(nx-1, :, :) + a1 * f(nx-2, :, :)
-
-    return
-
-  end subroutine derx_22
-
   subroutine dery_00(df, f, dy)
 
     !> Y first derivation of function f with O(dy6) scheme
@@ -695,55 +638,6 @@ contains
     return
 
   end subroutine derxxp_11
-
-  subroutine derxx_22(df, f, dx)
-
-    ! X second derivation of function f with O(dx6) scheme
-    ! Case for Inflow/Outflow condition
-    ! central difference schemes in the interior 
-    ! one-sided differences at the boundaries
-    !
-    ! INPUT:  f(nx, ny, nz) : flow variable
-    !         dx            : mesh size step
-    ! OUTPUT: df(nx, ny, nz): X derivative of the flow variable
-
-    real(kind=8), intent(in) :: f(:,:,:)
-    real(kind=8), intent(in) :: dx
-    real(kind=8), intent(out) :: df(:,:,:)
-
-    real(kind=8) :: twelvedxsquare, dxdx
-    real(kind=8) :: a, b, c, a1, b1, c1, d1
-    integer :: nx, i
-
-    nx = size(f, 1)
-
-    ! Coefficients for derivation
-    twelvedxsquare = 12.d0 * dx * dx
-    dxdx = dx * dx
-
-    a =  1.d0 / twelvedxsquare
-    b = 16.d0 / twelvedxsquare
-    c = 30.d0 / twelvedxsquare
-
-    a1 = 1.d0 / dxdx
-    b1 = 4.d0 / dxdx
-    c1 = 5.d0 / dxdx
-    d1 = 2.d0 / dxdx
-
-    df(1, :, :) = -a1 * f(4, :, :) + b1 * f(3, :, :) - &
-         c1 * f(2, :, :) + d1 * f(1, :, :)
-    df(2, :, :) =  a1 * f(3, :, :) - d1 * f(2, :, :) + a1 * f(1, :, :)
-    do i = 3, nx - 2
-       df(i, :, :) = -a * (f(i-2, :, :) + f(i+2, :, :)) + &
-            b * (f(i-1, :, :) + f(i+1, :, :)) - &
-            c * f(i, :, :)
-    end do
-    df(nx-1, :, :) = a1 * f(nx, :, :) - d1 * f(nx-1, :, :) + a1 * f(nx-2, :, :)
-    df(nx  , :, :) = d1 * f(nx, :, :) - c1 * f(nx-1, :, :) &
-         + b1 * f(nx-2, :, :) - a1 * f(nx-3, :, :)
-
-    return
-  end subroutine derxx_22
 
   subroutine deryy_00(df, f, dy)
 

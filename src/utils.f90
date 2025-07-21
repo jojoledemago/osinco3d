@@ -390,5 +390,127 @@ contains
     return
   end subroutine calc_visu_data_size
 
+  subroutine smooth_field(f, nx, ny, nz)
+    integer, intent(in) :: nx, ny, nz
+    real(kind=8), intent(inout) :: f(:,:,:)
+    real(kind=8) :: tmp(nx, ny, nz)
+    integer :: i,j,k
+    integer :: ip, im, jp, jm, kp, km
+    tmp = f
+    do k = 1, nz
+       kp = modulo(k, nz) + 1        ! k+1 périodique
+       km = modulo(k - 2, nz) + 1    ! k-1 périodique
+       do j = 1, ny
+          jp = modulo(j, ny) + 1
+          jm = modulo(j - 2, ny) + 1
+          do i = 1, nx
+             ip = modulo(i, nx) + 1
+             im = modulo(i - 2, nx) + 1
+
+             f(i,j,k) = ( &
+                  6.0d0 * tmp(i,j,k) + &
+                  tmp(ip,j,k) + tmp(im,j,k) + &
+                  tmp(i,jp,k) + tmp(i,jm,k) + &
+                  tmp(i,j,kp) + tmp(i,j,km) ) / 12.0d0
+          end do
+       end do
+    end do
+
+    return
+  end subroutine smooth_field
+
+  subroutine apply_gaussian_filter(field, kernel, nx, ny, nz, radius)
+    integer, intent(in) :: nx, ny, nz, radius
+    real(kind=8), dimension(nx,ny,nz), intent(inout) :: field
+    real(kind=8),  dimension(-radius:radius), intent(in) :: kernel
+
+    integer :: i,j,k,l,ii
+    real(kind=8), dimension(nx,ny,nz) :: tmp1, tmp2
+
+    tmp1 = 0.0d0
+    do k = 1, nz
+       do j = 1, ny
+          do i = 1, nx
+             do l = -radius, radius
+                ii = mod(i - 1 + l + nx, nx) + 1
+                tmp1(i,j,k) = tmp1(i,j,k) + kernel(l) * field(ii,j,k)
+             end do
+          end do
+       end do
+    end do
+
+    tmp2 = 0.0d0
+    do k = 1, nz
+       do j = 1, ny
+          do i = 1, nx
+             do l = -radius, radius
+                ii = mod(j - 1 + l + ny, ny) + 1
+                tmp2(i,j,k) = tmp2(i,j,k) + kernel(l) * tmp1(i,ii,k)
+             end do
+          end do
+       end do
+    end do
+
+    do k = 1, nz
+       do j = 1, ny
+          do i = 1, nx
+             do l = -radius, radius
+                ii = mod(k - 1 + l + nz, nz) + 1
+                tmp1(i,j,k) = tmp1(i,j,k) + kernel(l) * tmp2(i,j,ii)
+             end do
+          end do
+       end do
+    end do
+
+    field = tmp1
+
+    return
+
+  end subroutine apply_gaussian_filter
+
+  subroutine init_kernel(radius, kernel, sigma, kernel_type)
+    integer, intent(in) :: radius
+    real(kind=8), dimension(-radius:radius), intent(out) :: kernel
+    real(kind=8), intent(in) :: sigma
+    character(len=*), intent(in) :: kernel_type
+
+    integer :: r
+    real(kind=8) :: xk, sum_k
+    real(kind=8), parameter :: tiny_value = 1.0d-12
+
+    select case (trim(kernel_type))
+    case ("gaussian")
+       do r = -radius, radius
+          xk = real(r, kind=8)
+          kernel(r) = exp(-0.5d0 * (xk / sigma) ** 2)
+       end do
+
+    case ("dog")  ! Difference of Gaussians (band-pass)
+       do r = -radius, radius
+          xk = real(r, kind=8)
+          kernel(r) = exp(-0.5d0 * (xk / sigma)**2) - 0.5d0 * exp(-0.5d0 * (xk / (2.0d0 * sigma))**2)
+       end do
+
+    case ("mexican")
+       do r = -radius, radius
+          xk = real(r, kind=8)
+          kernel(r) = (1.d0 - (xk/sigma)**2) * exp(-0.5d0 * (xk / sigma)**2)
+       end do
+
+    case default
+       print*, "Unknown kernel type: ", kernel_type
+       stop
+    end select
+
+    sum_k = sum(kernel)
+    if (abs(sum_k) > tiny_value) then
+       kernel = kernel / sum_k
+    else
+       print *, "Warning: sum_k too small for normalization!"
+    end if
+
+    return
+  end subroutine init_kernel
+
 end module utils
 

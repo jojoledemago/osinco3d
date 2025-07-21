@@ -227,4 +227,15 @@ contains
     end do
   end function cumsum
 
+  pure function compute_wave_number(i, n, L) result(k)
+    !> Compute physical wave number for FFT-based spectral methods.
+    !> Handles FFT frequency mapping: i in 0:n-1 → [-n/2, n/2)
+    integer, intent(in) :: i      ! Index (0 to n-1)
+    integer, intent(in) :: n      ! Grid size
+    real(kind=8), intent(in) :: L ! Domain length
+    real(kind=8) :: k             ! Resulting wave number
+
+    k = 2.d0 * 3.141592653589793d0 * (i - n * merge(1, 0, i >= n/2)) / L
+  end function compute_wave_number
+
 end module functions

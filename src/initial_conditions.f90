@@ -1,7 +1,7 @@
 module initial_conditions
   use functions
   use utils
-  use add_disturb
+  use noise_module
   use initialization
   use derivation
   use visualization
@@ -62,7 +62,6 @@ contains
     integer :: i, j, k
 
     print *, "* Condition Initiale for a convected vortex"
-    if (ici == 1) print *, "* No excitation of the initial condition in the case of TGV"
     ! Vortex parameters (could be inputs)
     cv = u0   ! Max velocity (example value)
     rv = l0   ! Vortex radius (example value)
@@ -206,16 +205,10 @@ contains
     real(kind=8) :: u1, u2, t1, t2, t3, t4, theta_o
     real(kind=8) :: phi1, phi2
     real(kind=8), dimension(nx,ny,nz) :: magnitude
-    real(kind=8) :: A, x_disturb
     real(kind=8) :: pi
-    integer :: i, j, k, kx
+    integer :: i, j, k
 
     print *, "* Condition Initiale for a Planar Jet simulation"
-
-    if (ici == 1) then
-       A = init_noise_x * init_noise_y * init_noise_z
-       A = A / ratio
-    end if
 
     pi = acos(-1.d0)
     u1 = u0 / (1. - ratio)
@@ -240,20 +233,6 @@ contains
           end do
        end do
     end do
-    if (ici == 1 .or. ici == 3) then
-       A = init_noise_y * u0
-       kx = 3
-       dy = y(2) - y(1)
-       call calcul_u_base(u_base, ux(1,:,1), dy)
-       do k = 1, nz
-          do j = 1, ny
-             do i = 1, nx
-                x_disturb = u_base(j) * sin(2.d0 * pi * kx * x(i) / xlx)
-                uy(i,j,k) = uy(i,j,k) + A * x_disturb 
-             end do
-          end do
-       end do
-    end if
     magnitude = compute_velocity_magnitude(ux, uy, uz, nx, ny, nz) 
     pp = 1.d0 !+ magnitude * magnitude / 2.d0
 
@@ -296,21 +275,15 @@ contains
     real(kind=8) :: u1, u2, u3, theta_1, theta_2, d1, d2, h1, h2, hm
     real(kind=8) :: phi1, phi2
     real(kind=8), dimension(nx,ny,nz) :: magnitude
-    real(kind=8) :: A, y_disturb
     real(kind=8) :: pi
-    real(kind=8) :: dy
-    integer :: i, j, k, ky
+    integer :: i, j, k
 
     print *, "* Condition Initiale for a Co-planar Jet simulation"
 
-    if (ici == 1) then
-       A = init_noise_x * init_noise_y * init_noise_z
-       A = A / ratio
-    end if
     pi = acos(-1.d0)
     u2 = u0
     u1 = u2 / ratio
-    u3 = 0.091d0 * u2
+    u3 = 0.0d0 * u2
     d1 = l0
     d2 = 2.d0 * d1
     h1 = 0.5d0 * d1
@@ -322,7 +295,7 @@ contains
        do j = 1, ny
           do i = 1, nx
              if (abs(y(j)) < hm) then
-                ux(i,j,k) = 0.5d0 * (u1 + u2) + 0.5d0 * (u2 - u1) * &
+                ux(i,j,k) = x(i) * 0.d0 + 0.5d0 * (u1 + u2) + 0.5d0 * (u2 - u1) * &
                      tanh((abs(y(j)) - h1) / (2.d0 * theta_1))
                 if (nscr == 1) then
                    phi1 = 0.d0
@@ -345,20 +318,6 @@ contains
           end do
        end do
     end do
-    if (ici == 1 .or. ici == 3) then
-       A = 0.03 * u0
-       ky = 3
-       dy = y(2) - y(1)
-       call calcul_u_base(u_base, ux(1,:,1), dy)
-       do k = 1, nz
-          do j = 1, ny
-             do i = 1, nx
-                y_disturb = cos(2.0 * pi * ky * x(i) / xlx) * u_base(j)
-                uy(i,j,k) = uy(i,j,k) + A * y_disturb
-             end do
-          end do
-       end do
-    end if
     magnitude = compute_velocity_magnitude(ux, uy, uz, nx, ny, nz) 
     pp = 0.d0 !+ magnitude * magnitude / 2.d0
 
@@ -398,16 +357,11 @@ contains
 
     real(kind=8), parameter :: tiny_value = 1.d-12
     real(kind=8) :: u1, u2, t1, t2, t3, theta_o
-    real(kind=8) :: A, x_disturb
     real(kind=8) :: pi
-    integer :: i, j, k, kx
+    integer :: i, j, k
 
     print *, "* Condition Initiale for a Mixing Layer simulation"
 
-    if (ici == 1) then
-       A = init_noise_x * init_noise_y * init_noise_z
-       A = A / ratio
-    end if
     pi = acos(-1.d0)
     if (ratio < tiny_value .and. ratio > -tiny_value) then
        u2 = u0
@@ -432,24 +386,106 @@ contains
           end do
        end do
     end do
-    if (ici == 1 .or. ici == 3) then
-       A = 0.03d0 * u0
-       kx = 3
-       dy = y(2) - y(1)
-       call calcul_u_base(u_base, ux(1,:,1), dy)
-       do k = 1, nz
-          do j = 1, ny
-             do i = 1, nx
-                x_disturb = u_base(j) * sin(2.d0 * pi * kx * x(i) / xlx)
-                uy(i,j,k) = uy(i,j,k) + A * x_disturb 
-             end do
-          end do
-       end do
-    end if
     pp = 1.d0
 
     return
   end subroutine initialize_mixing_layer
+
+  subroutine initialize_homogeneous_isotropic_turbulence(ux, uy, uz, pp, phi, &
+       x, y, z, nx, ny, nz, l0, ratio, nscr)
+    implicit none
+    integer, intent(in) :: nx, ny, nz, nscr
+    real(kind=8), intent(in) :: x(:), y(:), z(:)
+    real(kind=8), intent(in) :: l0, ratio
+    real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+    real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
+
+    integer :: i,j,k
+    integer :: radius ! kernel size = 2*radius+1
+    real(kind=8) :: sigma
+    real(kind=8), dimension(nx,ny,nz) :: ax, ay, az
+    real(kind=8), dimension(nx,ny,nz) :: dazdx, daydx
+    real(kind=8), dimension(nx,ny,nz) :: dazdy, daxdy
+    real(kind=8), dimension(nx,ny,nz) :: daydz, daxdz
+    real(kind=8), dimension(:), allocatable :: kernel
+    real(kind=8) :: maxval_ux, maxval_uy, maxval_uz, max_u
+    real(kind=8), parameter :: tiny_value = 1.0d-12
+    logical, parameter :: use_filter = .true.
+    ! Declaration for scalar initialization
+    real(kind=8), parameter :: smooth_width = 0.2d0
+    real(kind=8) :: R, dist, cx, cy, cz, delt
+
+    integer, dimension(8) :: seed, clock_vals
+
+    radius = int(l0)
+    sigma = u0
+    allocate(kernel(-radius:radius))
+
+    call date_and_time(values = clock_vals)
+    do i = 1, 8
+       seed(i) = clock_vals(mod(i, 8) + 1) + i * 17
+    end do
+
+    call random_seed(put = seed)
+    call random_number(ax)
+    call random_number(ay)
+    call random_number(az)
+
+    ax = 2.0d0 * (ax-0.5d0)
+    ay = 2.0d0 * (ay-0.5d0)
+    az = 2.0d0 * (az-0.5d0)
+
+    if (use_filter) then
+       call init_kernel(radius, kernel, sigma, 'mexican')
+       call apply_gaussian_filter(ax, kernel, nx, ny, nz, radius)
+       call apply_gaussian_filter(ay, kernel, nx, ny, nz, radius)
+       call apply_gaussian_filter(az, kernel, nx, ny, nz, radius)
+    end if
+
+    call derxi(daydx, ay, dx)
+    call derxi(dazdx, az, dx)
+    call deryi(dazdy, az, dy)
+    call deryi(daxdy, ax, dy)
+    call derzi(daydz, ay, dz)
+    call derzi(daxdz, ax, dz)
+
+    ux = dazdy - daydz
+    uy = daxdz - dazdx
+    uz = daydx - daxdy
+
+    maxval_ux = maxval(abs(ux))
+    maxval_uy = maxval(abs(uy))
+    maxval_uz = maxval(abs(uz))
+
+    max_u = max(maxval_ux, maxval_uy, maxval_uz)
+
+    if (max_u > tiny_value) then
+       ux = ux / max_u
+       uy = uy / max_u
+       uz = uz / max_u
+    end if
+
+    pp = 1.d0
+
+    if (nscr == 1) then
+       print*, "* Initialize Scalar"
+       R = ratio ! 0.25d0 * (x(nx) - x(1))
+       cx = 0.5d0 * (x(1) + x(nx))
+       cy = 0.5d0 * (y(1) + y(ny))
+       cz = 0.5d0 * (z(1) + z(nz))
+       delt = smooth_width * R
+       do k = 1, nz
+          do j = 1, ny
+             do i = 1, nx
+                dist = sqrt( (x(i) - cx)**2 + (y(j) - cy)**2 + (z(k) - cz)**2 )
+                phi(i,j,k) = 0.5d0 * (1.d0 - tanh((dist - R) / delt))
+             end do
+          end do
+       end do
+    end if
+
+    return
+  end subroutine initialize_homogeneous_isotropic_turbulence
 
   subroutine set_initialization_type(typesim)
     !> Sets the function pointer to the appropriate initialization function
@@ -469,6 +505,8 @@ contains
        init_condition => initialize_coplanar_jet
     case(5)
        init_condition => initialize_mixing_layer
+    case(6)
+       init_condition => initialize_homogeneous_isotropic_turbulence
     case default
        print *, "Warning: Invalid initialization method selected. Using default."
        init_condition => initialize_vortex  ! Fallback to default method
@@ -570,9 +608,9 @@ contains
     real(kind=8), intent(in) :: dy, u0, init_noise_x, init_noise_y, init_noise_z
     integer, intent(in) :: nx, ny, nz, typesim
     real(kind=8), dimension(ny) :: u_base
-    real(kind=8) :: phase_x, phase_y, phase_z
+    real(kind=8) :: phase_x
     integer :: i, j, k
-    integer, parameter :: kx = 3, ky = 3, kz = 3  ! Number of oscillations in each direction
+    integer, parameter :: kx = 3 ! Number of oscillations in x-direction
     real(kind=8), parameter :: pi = acos(-1.d0)
 
     ! Compute base velocity profile
@@ -585,18 +623,16 @@ contains
 
     ! Add oscillations to velocity components
     do k = 1, nz
-       phase_z = 2.d0 * pi * kz * z(k) / zlz
        do j = 1, ny
-          phase_y = 2.d0 * pi * ky * y(j) / yly
           do i = 1, nx
              phase_x = 2.d0 * pi * kx * x(i) / xlx
 
              ux(i,j,k) = ux(i,j,k) + &
                   u0 * init_noise_x * u_base(j) * sin(phase_x)
              uy(i,j,k) = uy(i,j,k) + &
-                  u0 * init_noise_y * u_base(j) * sin(phase_y)
+                  u0 * init_noise_y * u_base(j) * sin(phase_x)
              uz(i,j,k) = uz(i,j,k) + &
-                  u0 * init_noise_z * u_base(j) * sin(phase_z)
+                  u0 * init_noise_z * u_base(j) * sin(phase_x)
           end do
        end do
     end do

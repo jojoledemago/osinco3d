@@ -33,8 +33,9 @@ EXECUTABLE = $(EXEDIR)/osinco3d.app
 #===============================================================================
 SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/derivation.f90 \
-          $(SRCDIR)/add_disturb.f90 \
+          $(SRCDIR)/noise_module.f90 \
           $(SRCDIR)/poisson.f90 \
+          $(SRCDIR)/poisson_multigrid.f90 \
           $(SRCDIR)/initialization.f90 \
           $(SRCDIR)/IOfunctions.f90 \
           $(SRCDIR)/utils.f90 \
@@ -62,7 +63,7 @@ directories:
 	@mkdir -p $(OBJDIR) $(EXEDIR)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(FC) $(LDFLAGS) $(OBJECTS) -o $@ $(LIBS)
+	$(FC) $(OBJECTS) -o $@ $(LDFLAGS) $(LIBS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.f90
 	$(FC) $(FFLAGS) -c -o $@ $<

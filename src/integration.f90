@@ -1,6 +1,7 @@
 module integration
   use functions
   use poisson
+  use poisson_multigrid
   use derivation
   use initialization
   use diffoper
@@ -196,7 +197,7 @@ contains
   end subroutine predict_velocity
 
   subroutine correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
-       nx, ny, nz, dt, omega, eps, kmax, idyn)
+       nx, ny, nz, dt, omega, eps, kmax, idyn, multigrid)
 
     !> This subroutine corrects the pressure field using the divergence of the predicted velocity field
     !> and solves the Poisson equation to enforce incompressibility (divergence-free condition).
@@ -221,7 +222,7 @@ contains
     real(kind=8), intent(inout) :: pp(:,:,:), omega
     real(kind=8), intent(in) :: ux_pred(:,:,:), uy_pred(:,:,:), uz_pred(:,:,:)
     real(kind=8), intent(in) :: dx, dy, dz, dt, eps
-    integer, intent(in) :: nx, ny, nz, kmax, idyn
+    integer, intent(in) :: nx, ny, nz, kmax, idyn, multigrid
 
     real(kind=8), allocatable :: divu_pred(:,:,:), rhs(:,:,:)
 
@@ -237,8 +238,15 @@ contains
     ! Prepare the right-hand side term for the Poisson equation
     rhs = divu_pred / dt
 
-    call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, &
-         omega, eps, kmax, idyn)
+    ! Choose Poisson solver method
+    if (multigrid == 1) then
+       ! >>> Use multigrid solver
+       call solve_poisson_multigrid(pp, rhs, dx, dy, dz, nx, ny, nz, kmax, 5, 4, eps)
+    else
+       ! >>> Use standard SOR solver
+       call poisson_solver(pp, rhs, dx, dy, dz, nx, ny, nz, omega, eps, kmax, idyn)
+    end if
+
     ! Free allocated memory
     deallocate(divu_pred, rhs)
     print *,""

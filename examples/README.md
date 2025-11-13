@@ -1,10 +1,10 @@
-# Osinco3D - Mini-Guide Débutant
+# Osinco3D - Beginner Mini-Guide
 
-Ce guide rapide explique comment compiler et lancer une simulation **Taylor-Green Vortex** avec Osinco3D.
+This quick guide explains how to compile and run a **Taylor-Green Vortex** simulation with Osinco3D.
 
 ---
 
-## 1. Cloner le dépôt
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/jojoledemago/osinco3d.git
@@ -13,61 +13,61 @@ cd osinco3d/src/
 
 ---
 
-## 2. Compiler le code
+## 2. Compile the code
 
 ```bash
 make
 ```
 
-- Pour nettoyer la compilation :
+- To clean and rebuild:
 
 ```bash
 make clean
 make
 ```
 
-- L'exécutable sera généré dans le dossier `bin/` sous le nom `osinco3d.app`.
+- The executable will be generated in the `bin/` folder under the name `osinco3d.app`.
 
 ---
 
-## 3. Configurer la simulation Taylor-Green
+## 3. Configure the Taylor-Green simulation
 
-1. Aller dans le dossier `bin` :
+1. Go to the `bin` folder:
 
 ```bash
 cd ../bin
 ```
 
-2. Modifier le fichier `parameters.o3d` :
+2. Edit the `parameters.o3d` file:
 
 ```fortran
 typesim = 2  ! Taylor-Green Vortex
 ```
 
-- Vérifiez également la taille de la grille (`nx`, `ny`, `nz`) et le pas de temps (`dt`) selon vos besoins.
+- Also check the grid size (`nx`, `ny`, `nz`) and the time step (`dt`) according to your needs.
 
 ---
 
-## 4. Lancer la simulation
+## 4. Run the simulation
 
 ```bash
 ./osinco3d.app
 ```
 
-- Les résultats seront enregistrés dans `fields.bin`.
+- The results will be saved in `fields.bin`.
 
 ---
 
-## 5. Visualiser les résultats
+## 5. Visualize the results
 
-- **2D** : Utiliser Gnuplot ou Matplotlib.
-- **3D** : Utiliser ParaView pour ouvrir les fichiers `.xdmf` ou `.vtu`.
+- **2D**: Use Gnuplot or Matplotlib.  
+- **3D**: Use ParaView to open `.xdmf` or `.vtu` files.
 
 ---
 
-## 6. Astuce rapide
+## 6. Quick tip
 
-Pour un test rapide sans trop de calcul :
+For a quick test with minimal computation:
 
 ```fortran
 nx = 32
@@ -76,6 +76,6 @@ nz = 32
 dt = 0.01
 ```
 
-Cela permet de voir rapidement l'évolution du vortex Taylor-Green.
+This allows you to quickly observe the evolution of the Taylor-Green vortex.
 
 ---

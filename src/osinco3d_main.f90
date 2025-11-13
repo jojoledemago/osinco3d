@@ -36,7 +36,7 @@ program osinco3d
      time0 = 0.d0
   else
      call get_filename(fields_name_file)
-     call read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time0, fields_name_file)
+     call read_fields(x, y, z, ux, uy, uz, pp, phi, nx, ny, nz, time0, fields_name_file)
      time = time0
      phi = 0.d0
   end if
@@ -65,7 +65,7 @@ program osinco3d
   else 
      call visu(rotz(:,:,kpro), x, y, nx, ny, num)
   end if
-  call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, 0)
+  call save_fields(x, y, z, ux, uy, uz, pp, phi, nx, ny, nz, time, 0)
   call visualize_2d(x, y, nx, ny, &
        ux(:,:,kpro), uy(:,:,kpro), uz(:,:,kpro), pp(:,:,kpro), &
        rotx(:,:,kpro), roty(:,:,kpro), rotz(:,:,kpro), q_criterion(:,:,kpro), &
@@ -155,6 +155,15 @@ program osinco3d
            call visu(rotz(:,:,kpro), x, y, nx, ny, num)
         end if
      end if
+     if (itime < 6) then
+        call write_profile(x, nx, ux(:,jpro,kpro), uy(:,jpro,kpro), &
+             uz(:,jpro,kpro), pp(:,jpro,kpro), "outputs/profil_x.dat")
+        call write_profile(y, ny, ux(ipro,:,kpro), uy(ipro,:,kpro), &
+             uz(ipro,:,kpro), pp(ipro,:,kpro), "outputs/profil_y.dat")
+        call write_profile(z, nz, ux(ipro,jpro,:), uy(ipro,jpro,:), &
+             uz(ipro,jpro,:), pp(ipro,jpro,:), "outputs/profil_z.dat")
+     end if
+
      if (modulo(itime, 25) == 0) then
         call calculate_residuals(ux, uy, uz, &
              old_ux, old_uy, old_uz, dt, &
@@ -171,7 +180,7 @@ program osinco3d
         end if
      end if
      if (modulo(itime, nsve) == 0) then
-        call save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, itime)
+        call save_fields(x, y, z, ux, uy, uz, pp, phi, nx, ny, nz, time, itime)
      end if
      call CPU_TIME(end_time)
      call calcul_cpu_time(go_time, start_time, end_time, itime, &

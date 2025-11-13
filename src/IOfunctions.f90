@@ -357,7 +357,7 @@ contains
     return
   end subroutine print_cfl
 
-  subroutine save_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, itime)
+  subroutine save_fields(x, y, z, ux, uy, uz, pp, phi, nx, ny, nz, time, itime)
     !> Save the flow state in a binary file to eventually restart the 
     !> simulation
     !> INPUT
@@ -368,6 +368,7 @@ contains
     !> uy      : array of velocity components in y-direction
     !> uz      : array of velocity components in z-direction
     !> pp      : array of pressure values
+    !> phi     : array of passive scalar
     !> nx      : number of grid points in x-direction
     !> ny      : number of grid points in y-direction
     !> nz      : number of grid points in z-direction
@@ -375,7 +376,7 @@ contains
     !> itiem   : index of the time step
     integer, intent(in) :: nx, ny, nz, itime
     real(kind=8), intent(in) :: x(nx), y(ny), z(nz)
-    real(kind=8), intent(in) :: ux(nx, ny, nz), uy(nx, ny, nz), uz(nx, ny, nz), pp(nx, ny, nz)
+    real(kind=8), intent(in) :: ux(nx, ny, nz), uy(nx, ny, nz), uz(nx, ny, nz), pp(nx, ny, nz), phi(nx, ny, nz)
     real(kind=8), intent(in) :: time
 
     character(len=30) :: filename
@@ -395,14 +396,14 @@ contains
     write(iunit) time
     write(iunit) nx, ny, nz
     write(iunit) x, y, z
-    write(iunit) ux, uy, uz, pp
+    write(iunit) ux, uy, uz, pp, phi
 
     close(iunit)
     return
 
   end subroutine save_fields
 
-  subroutine read_fields(x, y, z, ux, uy, uz, pp, nx, ny, nz, time, filename)
+  subroutine read_fields(x, y, z, ux, uy, uz, pp, phi, nx, ny, nz, time, filename)
     !> Read the flow state from a binary file to restart the simulation
     !> INPUT
     !> nx      : number of grid points in x-direction
@@ -415,6 +416,7 @@ contains
     !> uy      : array of velocity components in y-direction
     !> uz      : array of velocity components in z-direction
     !> pp      : array of pressure values
+    !> phi     : array of passive scalar
     !> time    : time from the beginning of the simulation
     !> filename: name of binary fields file
     !>
@@ -433,6 +435,7 @@ contains
     real(kind=8), intent(inout) :: x(nx), y(ny), z(nz)
     real(kind=8), intent(inout) :: ux(nx, ny, nz), uy(nx, ny, nz)
     real(kind=8), intent(inout) :: uz(nx, ny, nz), pp(nx, ny, nz)
+    real(kind=8), intent(inout) :: phi(nx, ny, nz)
     real(kind=8), intent(inout) :: time
 
     integer, parameter :: iunit = 102
@@ -459,7 +462,7 @@ contains
     endif
 
     read(iunit) x, y, z
-    read(iunit) ux, uy, uz, pp
+    read(iunit) ux, uy, uz, pp, phi
 
     close(iunit)
 

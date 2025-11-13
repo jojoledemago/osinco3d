@@ -55,11 +55,11 @@ contains
        do k = 1, nz
           ! Conditions aux limites périodiques en z
           if (k == 1) then
-             km1 = nz - 1
+             km1 = nz
              kp1 = 2
           else if (k == nz) then
              km1 = nz - 1
-             kp1 = 2
+             kp1 = 1
           else
              km1 = k - 1
              kp1 = k + 1
@@ -68,11 +68,11 @@ contains
           do j = 1, ny
              ! Conditions aux limites periodiques en y
              if (j == 1) then
-                jm1 = ny - 1
+                jm1 = ny
                 jp1 = 2
              else if (j == ny) then
                 jm1 = ny - 1
-                jp1 = 2
+                jp1 = 1
              else
                 jm1 = j - 1
                 jp1 = j + 1
@@ -81,11 +81,11 @@ contains
              do i = 1, nx
                 ! Conditions aux limites périodiques en x
                 if (i == 1) then
-                   im1 = nx - 1
+                   im1 = nx
                    ip1 = 2
                 else if (i == nx) then
                    im1 = nx - 1
-                   ip1 = 2
+                   ip1 = 1
                 else
                    im1 = i - 1
                    ip1 = i + 1
@@ -183,11 +183,11 @@ contains
        do k = 1, nz
           ! Conditions aux limites périodiques en z
           if (k == 1) then
-             km1 = nz - 1
+             km1 = nz
              kp1 = 2
           else if (k == nz) then
              km1 = nz - 1
-             kp1 = 2
+             kp1 = 1
           else
              km1 = k - 1
              kp1 = k + 1
@@ -207,11 +207,11 @@ contains
              do i = 1, nx
                 ! Conditions aux limites périodiques en x
                 if (i == 1) then
-                   im1 = nx - 1
+                   im1 = nx
                    ip1 = 2
                 else if (i == nx) then
                    im1 = nx - 1
-                   ip1 = 2
+                   ip1 = 1
                 else
                    im1 = i - 1
                    ip1 = i + 1

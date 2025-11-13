@@ -118,7 +118,7 @@ contains
     call derxi(duxdx, ux, dx)
     call deryp(duxdy, ux, dy)
     call derzp(duxdz, ux, dz)
-    ! Compute of the partial first derivatives of ux
+    ! Compute of the partial second derivatives of ux
     ! with respect to x, y, z axis
     call derxxi(d2uxdx2, ux, dx)
     call deryyp(d2uxdy2, ux, dy)
@@ -138,7 +138,7 @@ contains
     call derxp(duydx, uy, dx)
     call deryi(duydy, uy, dy)
     call derzp(duydz, uy, dz)
-    ! Compute of the partial first derivatives of uy
+    ! Compute of the partial second derivatives of uy
     ! with respect to x, y, z axis
     call derxxp(d2uydx2, uy, dx)
     call deryyi(d2uydy2, uy, dy)
@@ -158,7 +158,7 @@ contains
     call derxp(duzdx, uz, dx)
     call deryp(duzdy, uz, dy)
     call derzi(duzdz, uz, dz)
-    ! Compute of the partial first derivatives of uz
+    ! Compute of the partial second derivatives of uz
     ! with respect to x, y, z axis
     call derxxp(d2uzdx2, uz, dx)
     call deryyp(d2uzdy2, uz, dy)
@@ -331,93 +331,126 @@ contains
 
   subroutine transeq(phi, ux, uy, uz, src, fphi, re, sc, adt, bdt, cdt, &
        itime, itscheme, dx, dy, dz, nx, ny, nz, iles, nu_t)
-    !> Solves the transport equation for a scalar variable.
+    !> Solves the 3D transport equation for a passive scalar.
+    !>
+    !> The equation solved is:
+    !>     d(phi)/dt + u . grad(phi) = div(alpha_eff * grad(phi)) + src
+    !>
+    !> The subroutine supports Euler, Adams-Bashforth 2 and 3 schemes.
+    !> A conservative post-processing step is applied to clip phi
+    !> within [0,1] and redistribute any excess/deficit to preserve
+    !> the global mean.
+    !>
     !> INPUT:
-    !> - phi(nx,ny,nz)   : Scalar variable to be transported
-    !> - ux(nx,ny,nz)    : x-component of velocity
-    !> - uy(nx,ny,nz)    : y-component of velocity
-    !> - uz(nx,ny,nz)    : z-component of velocity
-    !> - src(nx,ny,nz)   : source terme of the scalar
-    !> - re              : Reynolds number
-    !> - sc              : Schmidt number
-    !> - adt(3)          : Coefficients for the current time step integration
-    !> - bdt(3)          : Coefficients for the previous time step integration
-    !> - cdt(3)          : Coefficients for two time steps back integration
-    !> - itime           : Current time index
-    !> - itscheme        : Integration scheme indicator (1=Euler, 2=AB2, 3=AB3)
-    !> - dx, dy, dz      : Mesh spacing in x, y, z directions
-    !> - nx, ny, nz      : Number of grid points in x, y, z directions
-    !> - iles            : Integer for apply LES 
-    !> - nu_t(nx, ny, nz): Turbulent viscosity 
+    !>   phi(nx,ny,nz)   : Scalar field to be transported
+    !>   ux, uy, uz       : Velocity components (x, y, z)
+    !>   src(nx,ny,nz)    : Source term
+    !>   re               : Reynolds number
+    !>   sc               : Schmidt number
+    !>   adt(3), bdt(3), cdt(3) : Time integration coefficients
+    !>   itime            : Current time step index
+    !>   itscheme         : Integration scheme (1=Euler, 2=AB2, 3=AB3)
+    !>   dx, dy, dz       : Grid spacings in x, y, z
+    !>   nx, ny, nz       : Grid dimensions
+    !>   iles             : Flag for LES model (1=on, 0=off)
+    !>   nu_t(nx,ny,nz)   : Turbulent viscosity (LES)
+    !>
     !> OUTPUT:
-    !> - phi(nx,ny,nz)   : Scalar variable updated after integration
-    !> - fphi(nx,ny,nz,3): Flux computed for 3 time step
+    !>   phi(nx,ny,nz)    : Updated scalar field after one time step
+    !>   fphi(nx,ny,nz,3) : Time-step fluxes for AB2/AB3 integration
+
+    implicit none
 
     integer, intent(in) :: itime, itscheme, nx, ny, nz, iles
-    real(kind=8), dimension(nx,ny,nz), intent(in) :: ux, uy, uz, src, nu_t
-    real(kind=8), dimension(3), intent(in) :: adt, bdt, cdt
     real(kind=8), intent(in) :: re, sc, dx, dy, dz
-
+    real(kind=8), dimension(3), intent(in) :: adt, bdt, cdt
+    real(kind=8), dimension(nx,ny,nz), intent(in) :: ux, uy, uz, src, nu_t
     real(kind=8), dimension(nx,ny,nz), intent(inout) :: phi
     real(kind=8), dimension(nx,ny,nz,3), intent(inout) :: fphi
 
-    real(kind=8) :: adu, bdu, cdu 
+    real(kind=8) :: adu, bdu, cdu
     real(kind=8), dimension(:,:,:), allocatable :: alpha_eff
     real(kind=8), dimension(:,:,:), allocatable :: dphidx, dphidy, dphidz
     real(kind=8), dimension(:,:,:), allocatable :: dphidx2, dphidy2, dphidz2
 
+    !--- Temporary arrays for conservative clipping ---
+    real(kind=8), dimension(nx,ny,nz) :: phi_old, weight
+    real(kind=8) :: phi_old_avg, phi_new_avg, excess
 
     print *, "* Transport equation"
 
+    !--- Allocate derivative arrays ---
     allocate(dphidx(nx,ny,nz), dphidy(nx,ny,nz), dphidz(nx,ny,nz))
     allocate(dphidx2(nx,ny,nz), dphidy2(nx,ny,nz), dphidz2(nx,ny,nz))
     allocate(alpha_eff(nx,ny,nz))
 
+    !--- Select time integration coefficients ---
     if (itscheme == 1 .or. itime == 1) then
        print *, " Euler"
-       adu = adt(1)
-       bdu = bdt(1)
-       cdu = cdt(1)
+       adu = adt(1); bdu = bdt(1); cdu = cdt(1)
     elseif (itscheme == 2 .or. itime == 2) then
        print *, " Adams-Bashforth 2"
-       adu = adt(2)
-       bdu = bdt(2)
-       cdu = cdt(2)
+       adu = adt(2); bdu = bdt(2); cdu = cdt(2)
     elseif (itscheme == 3) then
        print *, " Adams-Bashforth 3"
-       adu = adt(3)
-       bdu = bdt(3)
-       cdu = cdt(3)
+       adu = adt(3); bdu = bdt(3); cdu = cdt(3)
     else
-       adu = 0.d0
-       bdu = 0.d0
-       cdu = 0.d0
        print *, 'itscheme:', itscheme, ' unrecognized'
        stop
     end if
 
+    !--- Compute effective diffusion coefficient alpha_eff ---
     if (iles == 1) then
+       ! LES: turbulent viscosity included
        alpha_eff = 1.d0 / (re * sc) + nu_t / sc
     else
+       ! Molecular diffusion only
        alpha_eff = 1.d0 / (re * sc)
     end if
 
+    !--- Compute first derivatives (order 6 centered) ---
     call derxp(dphidx, phi, dx)
     call deryp(dphidy, phi, dy)
     call derzp(dphidz, phi, dz)
 
+    !--- Compute second derivatives (order 4 centered) ---
     call derxxp(dphidx2, phi, dx)
     call deryyp(dphidy2, phi, dy)
     call derzzp(dphidz2, phi, dz)
 
+    !--- Compute scalar fluxes: diffusion + convection + source ---
     fphi(:,:,:,1) = alpha_eff * (dphidx2 + dphidy2 + dphidz2) - &
-         (ux * dphidx + uy * dphidy + uz * dphidz) + src
+         (ux*dphidx + uy*dphidy + uz*dphidz) + src
 
-    phi = phi + adu * fphi(:, :, :, 1) + &
-         bdu * fphi(:, :, :, 2) + cdu * fphi(:, :, :, 3)
+    !--- Advance scalar using selected time integration scheme ---
+    phi = phi + adu * fphi(:,:,:,1) + bdu * fphi(:,:,:,2) + cdu * fphi(:,:,:,3)
 
+    !===============================
+    ! Post-processing: conservative clipping
+    !===============================
+    ! 1) Save old field and compute global mean
+    phi_old = phi
+    phi_old_avg = sum(phi_old) / real(nx*ny*nz, kind=8)
+
+    ! 2) Clip phi to [0,1]
+    phi = max(0.d0, min(1.d0, phi))
+
+    ! 3) Compute excess/deficit after clipping
+    phi_new_avg = sum(phi) / real(nx*ny*nz, kind=8)
+    excess = phi_old_avg - phi_new_avg
+
+    ! 4) Compute weights proportional to distance from bounds
+    weight = min(phi, 1.d0 - phi)   ! larger weight for values near 0.5
+    weight = weight / sum(weight)   ! normalize
+
+    ! 5) Redistribute excess conservatively
+    phi = phi + excess * weight
+
+    ! 6) Reclip after redistribution for safety
+    phi = max(0.d0, min(1.d0, phi))
+
+    !--- Update historical fluxes for AB2/AB3 ---
     select case(itscheme)
-
     case(2)
        fphi(:,:,:,2) = fphi(:,:,:,1)
     case(3)
@@ -425,13 +458,13 @@ contains
        fphi(:,:,:,2) = fphi(:,:,:,1)
     end select
 
-
+    !--- Free temporary arrays ---
     deallocate(dphidx, dphidy, dphidz)
     deallocate(dphidx2, dphidy2, dphidz2)
+    deallocate(alpha_eff)
 
     print *, ""
     return
-
   end subroutine transeq
 
 end module integration

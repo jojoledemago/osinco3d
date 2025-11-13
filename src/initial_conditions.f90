@@ -8,6 +8,7 @@ module initial_conditions
   use IOfunctions
   use poisson
   use diffoper
+
   implicit none
 
   !> Abstract interface for initializing flow conditions.
@@ -211,8 +212,8 @@ contains
     print *, "* Condition Initiale for a Planar Jet simulation"
 
     pi = acos(-1.d0)
-    u1 = u0 / (1. - ratio)
-    u2 = u1 * ratio
+    u1 = u0 * ratio
+    u2 = u0 - ratio
     phi1 = 1.d0
     phi2 = 0.d0
     theta_o = 1./30. * l0
@@ -386,6 +387,7 @@ contains
           end do
        end do
     end do
+
     pp = 1.d0
 
     return
@@ -393,83 +395,153 @@ contains
 
   subroutine initialize_homogeneous_isotropic_turbulence(ux, uy, uz, pp, phi, &
        x, y, z, nx, ny, nz, l0, ratio, nscr)
+    use, intrinsic :: iso_c_binding
     implicit none
+
+    ! Inputs
     integer, intent(in) :: nx, ny, nz, nscr
     real(kind=8), intent(in) :: x(:), y(:), z(:)
     real(kind=8), intent(in) :: l0, ratio
+
+    ! Outputs
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
 
-    integer :: i,j,k
-    integer :: radius ! kernel size = 2*radius+1
-    real(kind=8) :: sigma
-    real(kind=8), dimension(nx,ny,nz) :: ax, ay, az
-    real(kind=8), dimension(nx,ny,nz) :: dazdx, daydx
-    real(kind=8), dimension(nx,ny,nz) :: dazdy, daxdy
-    real(kind=8), dimension(nx,ny,nz) :: daydz, daxdz
-    real(kind=8), dimension(:), allocatable :: kernel
-    real(kind=8) :: maxval_ux, maxval_uy, maxval_uz, max_u
-    real(kind=8), parameter :: tiny_value = 1.0d-12
-    logical, parameter :: use_filter = .true.
-    ! Declaration for scalar initialization
-    real(kind=8), parameter :: smooth_width = 0.2d0
-    real(kind=8) :: R, dist, cx, cy, cz, delt
+    ! Local variables
+    integer :: i,j,k, ii,jj,kk
+    integer :: ntot
+    real(kind=8) :: kx,ky,kz,k2,kmod,k0,filt
+    real(kind=8) :: scale,maxvel
+    complex(kind=8), allocatable :: uhatx(:,:,:), uhaty(:,:,:), uhatz(:,:,:)
+    complex(kind=8), allocatable :: inx(:,:,:), iny(:,:,:), inz(:,:,:)
+    type(C_PTR) :: plan_f_x, plan_f_y, plan_f_z
+    type(C_PTR) :: plan_b_x, plan_b_y, plan_b_z
+    complex(kind=8) :: kdotC,factorC
+    real(kind=8) :: rnd
+    integer, parameter :: nspct = 1
+    real(kind=8) :: smooth_width, R, cx, cy, cz, delt, dist
 
-    integer, dimension(8) :: seed, clock_vals
+    ! Total number of points
+    ntot = nx*ny*nz
 
-    radius = int(l0)
-    sigma = u0
-    allocate(kernel(-radius:radius))
+    ! Characteristic wavenumber
+    if(l0>0.0d0) then
+       k0 = 2.0d0*acos(-1.0d0)/l0
+    else
+       k0 = 1.0d-30
+    end if
 
-    call date_and_time(values = clock_vals)
-    do i = 1, 8
-       seed(i) = clock_vals(mod(i, 8) + 1) + i * 17
+    ! Allocate arrays
+    allocate(uhatx(nx,ny,nz))
+    allocate(uhaty(nx,ny,nz))
+    allocate(uhatz(nx,ny,nz))
+    allocate(inx(nx,ny,nz))
+    allocate(iny(nx,ny,nz))
+    allocate(inz(nx,ny,nz))
+
+    call random_seed()
+
+    ! --- Generate random modes in k-space and apply spectral filter ---
+    do kk=0,nz-1
+       if(kk <= nz/2) then 
+          kz = 2.0d0*acos(-1.0d0)*real(kk,8)/zlz
+       else 
+          kz = 2.0d0*acos(-1.0d0)*real(kk-nz,8)/zlz
+       end if
+       do jj=0,ny-1
+          if(jj <= ny/2) then 
+             ky = 2.0d0*acos(-1.0d0)*real(jj,8)/yly
+          else 
+             ky = 2.0d0*acos(-1.0d0)*real(jj-ny,8)/yly
+          end if
+          do ii=0,nx-1
+             if(ii <= nx/2) then 
+                kx = 2.0d0*acos(-1.0d0)*real(ii,8)/xlx
+             else 
+                kx = 2.0d0*acos(-1.0d0)*real(ii-nx,8)/xlx
+             end if
+
+             i = ii+1; j = jj+1; k = kk+1
+             k2 = kx**2 + ky**2 + kz**2
+
+             if(k2 < 1.0d-32) then
+                ! Zero mean mode
+                uhatx(i,j,k) = (0.0d0,0.0d0)
+                uhaty(i,j,k) = (0.0d0,0.0d0)
+                uhatz(i,j,k) = (0.0d0,0.0d0)
+             else
+                ! Spectral filter: exponential decay around k0
+                kmod = sqrt(k2)
+                if(nspct>0) then
+                   filt = exp(-(kmod/k0)**real(nspct,8))
+                else
+                   filt = 1.0d0
+                end if
+
+                ! Random complex numbers [-1,1]
+                call random_number(rnd)
+                uhatx(i,j,k) = cmplx(2.0d0*rnd-1.0d0,2.0d0*rnd-1.0d0,kind=8)
+                call random_number(rnd)
+                uhaty(i,j,k) = cmplx(2.0d0*rnd-1.0d0,2.0d0*rnd-1.0d0,kind=8)
+                call random_number(rnd)
+                uhatz(i,j,k) = cmplx(2.0d0*rnd-1.0d0,2.0d0*rnd-1.0d0,kind=8)
+
+                ! Projection: u_perp = u - k (k.u)/|k|^2
+                kdotC = kx*uhatx(i,j,k) + ky*uhaty(i,j,k) + kz*uhatz(i,j,k)
+                factorC = kdotC / k2
+                uhatx(i,j,k) = (uhatx(i,j,k) - kx*factorC)*filt
+                uhaty(i,j,k) = (uhaty(i,j,k) - ky*factorC)*filt
+                uhatz(i,j,k) = (uhatz(i,j,k) - kz*factorC)*filt
+             end if
+          end do
+       end do
     end do
 
-    call random_seed(put = seed)
-    call random_number(ax)
-    call random_number(ay)
-    call random_number(az)
+    ! --- Create FFTW plans (complex->real) ---
+    plan_b_x = fftw_plan_dft_3d(nx,ny,nz,uhatx,inx,FFTW_BACKWARD,FFTW_ESTIMATE)
+    plan_b_y = fftw_plan_dft_3d(nx,ny,nz,uhaty,iny,FFTW_BACKWARD,FFTW_ESTIMATE)
+    plan_b_z = fftw_plan_dft_3d(nx,ny,nz,uhatz,inz,FFTW_BACKWARD,FFTW_ESTIMATE)
 
-    ax = 2.0d0 * (ax-0.5d0)
-    ay = 2.0d0 * (ay-0.5d0)
-    az = 2.0d0 * (az-0.5d0)
+    ! Execute inverse FFT
+    call fftw_execute_dft(plan_b_x,uhatx,inx)
+    call fftw_execute_dft(plan_b_y,uhaty,iny)
+    call fftw_execute_dft(plan_b_z,uhatz,inz)
 
-    if (use_filter) then
-       call init_kernel(radius, kernel, sigma, 'mexican')
-       call apply_gaussian_filter(ax, kernel, nx, ny, nz, radius)
-       call apply_gaussian_filter(ay, kernel, nx, ny, nz, radius)
-       call apply_gaussian_filter(az, kernel, nx, ny, nz, radius)
+    ! Normalize iFFT and copy to output
+    scale = 1.0d0/real(ntot,8)
+    maxvel = 0.0d0
+    do k=1,nz
+       do j=1,ny
+          do i=1,nx
+             ux(i,j,k) = real(inx(i,j,k))*scale
+             uy(i,j,k) = real(iny(i,j,k))*scale
+             uz(i,j,k) = real(inz(i,j,k))*scale
+             maxvel = max(maxvel, abs(ux(i,j,k)), abs(uy(i,j,k)), abs(uz(i,j,k)))
+          end do
+       end do
+    end do
+
+    ! Rescale to ensure |u| <= u0
+    if(maxvel>0.0d0) then
+       scale = u0 / maxvel
+       do k=1,nz
+          do j=1,ny
+             do i=1,nx
+                ux(i,j,k) = ux(i,j,k)*scale
+                uy(i,j,k) = uy(i,j,k)*scale
+                uz(i,j,k) = uz(i,j,k)*scale
+             end do
+          end do
+       end do
     end if
 
-    call derxi(daydx, ay, dx)
-    call derxi(dazdx, az, dx)
-    call deryi(dazdy, az, dy)
-    call deryi(daxdy, ax, dy)
-    call derzi(daydz, ay, dz)
-    call derzi(daxdz, ax, dz)
-
-    ux = dazdy - daydz
-    uy = daxdz - dazdx
-    uz = daydx - daxdy
-
-    maxval_ux = maxval(abs(ux))
-    maxval_uy = maxval(abs(uy))
-    maxval_uz = maxval(abs(uz))
-
-    max_u = max(maxval_ux, maxval_uy, maxval_uz)
-
-    if (max_u > tiny_value) then
-       ux = ux / max_u
-       uy = uy / max_u
-       uz = uz / max_u
-    end if
-
-    pp = 1.d0
-
+    ! Initialize pressure and scalar field
+    pp = 0.0d0
+    phi = 0.0d0
+    smooth_width = 0.2d0
     if (nscr == 1) then
        print*, "* Initialize Scalar"
-       R = ratio ! 0.25d0 * (x(nx) - x(1))
+       R = 0.25d0 * (x(nx) - x(1))
        cx = 0.5d0 * (x(1) + x(nx))
        cy = 0.5d0 * (y(1) + y(ny))
        cz = 0.5d0 * (z(1) + z(nz))
@@ -484,7 +556,12 @@ contains
        end do
     end if
 
-    return
+    ! Destroy FFTW plans and deallocate arrays
+    call fftw_destroy_plan(plan_b_x)
+    call fftw_destroy_plan(plan_b_y)
+    call fftw_destroy_plan(plan_b_z)
+    deallocate(uhatx,uhaty,uhatz,inx,iny,inz)
+
   end subroutine initialize_homogeneous_isotropic_turbulence
 
   subroutine set_initialization_type(typesim)
@@ -610,7 +687,7 @@ contains
     real(kind=8), dimension(ny) :: u_base
     real(kind=8) :: phase_x
     integer :: i, j, k
-    integer, parameter :: kx = 3 ! Number of oscillations in x-direction
+    integer, parameter :: kx = 9 ! Number of oscillations in x-direction
     real(kind=8), parameter :: pi = acos(-1.d0)
 
     ! Compute base velocity profile

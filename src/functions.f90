@@ -238,4 +238,9 @@ contains
     k = 2.d0 * 3.141592653589793d0 * (i - n * merge(1, 0, i >= n/2)) / L
   end function compute_wave_number
 
+  function random() result (rand)
+    real(kind=8) :: r, rand
+    call random_number(r)
+    rand = 2.0d0*r-1.0d0
+  end function random
 end module functions

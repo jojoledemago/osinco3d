@@ -207,7 +207,7 @@ contains
     max_value = maxval(abs(f))
     do j=2,ny-1
        do i=2,nx-1
-          write(10,*) x(i), y(j), f(i,j) / max_value
+          write(10,*) x(i), y(j), f(i,j) !/ max_value
        enddo
        write(10,*)
     enddo

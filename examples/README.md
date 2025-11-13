@@ -61,7 +61,7 @@ typesim = 2  ! Taylor-Green Vortex
 ## 5. Visualize the results
 
 - **2D**: Use Gnuplot or Matplotlib.  
-- **3D**: Use ParaView to open `.xdmf` or `.vtu` files.
+- **3D**: Use ParaView to open `.xdmf` files.
 
 ---
 

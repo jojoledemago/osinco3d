@@ -393,176 +393,65 @@ contains
     return
   end subroutine initialize_mixing_layer
 
-  subroutine initialize_homogeneous_isotropic_turbulence(ux, uy, uz, pp, phi, &
+  subroutine initialize_vortex_merge(ux, uy, uz, pp, phi, &
        x, y, z, nx, ny, nz, l0, ratio, nscr)
-    use, intrinsic :: iso_c_binding
-    implicit none
-
-    ! Inputs
-    integer, intent(in) :: nx, ny, nz, nscr
     real(kind=8), intent(in) :: x(:), y(:), z(:)
-    real(kind=8), intent(in) :: l0, ratio
-
-    ! Outputs
     real(kind=8), intent(out) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
     real(kind=8), intent(out) :: pp(:,:,:), phi(:,:,:)
+    real(kind=8), intent(in) :: l0, ratio
+    integer, intent(in) :: nx, ny, nz, nscr
 
-    ! Local variables
-    integer :: i,j,k, ii,jj,kk
-    integer :: ntot
-    real(kind=8) :: kx,ky,kz,k2,kmod,k0,filt
-    real(kind=8) :: scale,maxvel
-    complex(kind=8), allocatable :: uhatx(:,:,:), uhaty(:,:,:), uhatz(:,:,:)
-    complex(kind=8), allocatable :: inx(:,:,:), iny(:,:,:), inz(:,:,:)
-    type(C_PTR) :: plan_f_x, plan_f_y, plan_f_z
-    type(C_PTR) :: plan_b_x, plan_b_y, plan_b_z
-    complex(kind=8) :: kdotC,factorC
-    real(kind=8) :: rnd
-    integer, parameter :: nspct = 1
-    real(kind=8) :: smooth_width, R, cx, cy, cz, delt, dist
 
-    ! Total number of points
-    ntot = nx*ny*nz
+    real(kind=8) :: dx, dy
+    real(kind=8) :: cv, rv, xc1, yc1, xc2, yc2, r1, r2, A
+    real(kind=8), dimension(nx, ny, nz) :: ksi1, dksi1dx, dksi1dy
+    real(kind=8), dimension(nx, ny, nz) :: ksi2, dksi2dx, dksi2dy
+    integer :: i, j, k
 
-    ! Characteristic wavenumber
-    if(l0>0.0d0) then
-       k0 = 2.0d0*acos(-1.0d0)/l0
-    else
-       k0 = 1.0d-30
-    end if
+    print *, "* Condition Initiale for a vortex merge"
+    ! Vortex parameters (could be inputs)
+    cv = u0   ! Max velocity (example value)
+    rv = 0.5d0 * l0   ! Vortex radius (example value)
 
-    ! Allocate arrays
-    allocate(uhatx(nx,ny,nz))
-    allocate(uhaty(nx,ny,nz))
-    allocate(uhatz(nx,ny,nz))
-    allocate(inx(nx,ny,nz))
-    allocate(iny(nx,ny,nz))
-    allocate(inz(nx,ny,nz))
+    A = z(1) ! Unused for no warning
+    ! during compilation
+    xc1 = 0.5d0 * (x(nx) + x(1)) - 1.5d0 * rv
+    xc2 = 0.5d0 * (x(nx) + x(1)) + 1.5d0 * rv
+    yc1 = 0.5d0 * (y(ny) + y(1)) 
+    yc2 = yc1
 
-    call random_seed()
+    ! Initialize the vortex pattern
 
-    ! --- Generate random modes in k-space and apply spectral filter ---
-    do kk=0,nz-1
-       if(kk <= nz/2) then 
-          kz = 2.0d0*acos(-1.0d0)*real(kk,8)/zlz
-       else 
-          kz = 2.0d0*acos(-1.0d0)*real(kk-nz,8)/zlz
-       end if
-       do jj=0,ny-1
-          if(jj <= ny/2) then 
-             ky = 2.0d0*acos(-1.0d0)*real(jj,8)/yly
-          else 
-             ky = 2.0d0*acos(-1.0d0)*real(jj-ny,8)/yly
-          end if
-          do ii=0,nx-1
-             if(ii <= nx/2) then 
-                kx = 2.0d0*acos(-1.0d0)*real(ii,8)/xlx
-             else 
-                kx = 2.0d0*acos(-1.0d0)*real(ii-nx,8)/xlx
-             end if
-
-             i = ii+1; j = jj+1; k = kk+1
-             k2 = kx**2 + ky**2 + kz**2
-
-             if(k2 < 1.0d-32) then
-                ! Zero mean mode
-                uhatx(i,j,k) = (0.0d0,0.0d0)
-                uhaty(i,j,k) = (0.0d0,0.0d0)
-                uhatz(i,j,k) = (0.0d0,0.0d0)
-             else
-                ! Spectral filter: exponential decay around k0
-                kmod = sqrt(k2)
-                if(nspct>0) then
-                   filt = exp(-(kmod/k0)**real(nspct,8))
-                else
-                   filt = 1.0d0
-                end if
-
-                ! Random complex numbers [-1,1]
-                call random_number(rnd)
-                uhatx(i,j,k) = cmplx(2.0d0*rnd-1.0d0,2.0d0*rnd-1.0d0,kind=8)
-                call random_number(rnd)
-                uhaty(i,j,k) = cmplx(2.0d0*rnd-1.0d0,2.0d0*rnd-1.0d0,kind=8)
-                call random_number(rnd)
-                uhatz(i,j,k) = cmplx(2.0d0*rnd-1.0d0,2.0d0*rnd-1.0d0,kind=8)
-
-                ! Projection: u_perp = u - k (k.u)/|k|^2
-                kdotC = kx*uhatx(i,j,k) + ky*uhaty(i,j,k) + kz*uhatz(i,j,k)
-                factorC = kdotC / k2
-                uhatx(i,j,k) = (uhatx(i,j,k) - kx*factorC)*filt
-                uhaty(i,j,k) = (uhaty(i,j,k) - ky*factorC)*filt
-                uhatz(i,j,k) = (uhatz(i,j,k) - kz*factorC)*filt
-             end if
+    do k = 1, nz
+       do j = 1, ny
+          do i = 1, nx
+             r1 = sqrt((x(i) - xc1)**2 + (y(j) - yc1)**2)
+             ksi1(i,j,k) = cv * exp(-0.5 * (r1/rv)**2)
+             r2 = sqrt((x(i) - xc2)**2 + (y(j) - yc2)**2)
+             ksi2(i,j,k) = cv * exp(-0.5 * (r2/rv)**2)
           end do
        end do
     end do
 
-    ! --- Create FFTW plans (complex->real) ---
-    plan_b_x = fftw_plan_dft_3d(nx,ny,nz,uhatx,inx,FFTW_BACKWARD,FFTW_ESTIMATE)
-    plan_b_y = fftw_plan_dft_3d(nx,ny,nz,uhaty,iny,FFTW_BACKWARD,FFTW_ESTIMATE)
-    plan_b_z = fftw_plan_dft_3d(nx,ny,nz,uhatz,inz,FFTW_BACKWARD,FFTW_ESTIMATE)
+    ! Compute derivatives to find velocity components
+    dx = (x(nx) - x(1)) / real(nx - 1, kind=8)
+    dy = (y(ny) - y(1)) / real(ny - 1, kind=8)
+    call derxi(dksi1dx, ksi1, dx)
+    call deryi(dksi1dy, ksi1, dy)
+    call derxi(dksi2dx, ksi2, dx)
+    call deryi(dksi2dy, ksi2, dy)
 
-    ! Execute inverse FFT
-    call fftw_execute_dft(plan_b_x,uhatx,inx)
-    call fftw_execute_dft(plan_b_y,uhaty,iny)
-    call fftw_execute_dft(plan_b_z,uhatz,inz)
+    ux = u0 * ( dksi1dy + ratio * dksi2dy )
+    uy = -u0 * ( dksi1dx + ratio * dksi2dx )
+    uz(:,:,:) = 0.0d0
+    pp = 0.0d0 
 
-    ! Normalize iFFT and copy to output
-    scale = 1.0d0/real(ntot,8)
-    maxvel = 0.0d0
-    do k=1,nz
-       do j=1,ny
-          do i=1,nx
-             ux(i,j,k) = real(inx(i,j,k))*scale
-             uy(i,j,k) = real(iny(i,j,k))*scale
-             uz(i,j,k) = real(inz(i,j,k))*scale
-             maxvel = max(maxvel, abs(ux(i,j,k)), abs(uy(i,j,k)), abs(uz(i,j,k)))
-          end do
-       end do
-    end do
-
-    ! Rescale to ensure |u| <= u0
-    if(maxvel>0.0d0) then
-       scale = u0 / maxvel
-       do k=1,nz
-          do j=1,ny
-             do i=1,nx
-                ux(i,j,k) = ux(i,j,k)*scale
-                uy(i,j,k) = uy(i,j,k)*scale
-                uz(i,j,k) = uz(i,j,k)*scale
-             end do
-          end do
-       end do
-    end if
-
-    ! Initialize pressure and scalar field
-    pp = 0.0d0
-    phi = 0.0d0
-    smooth_width = 0.2d0
     if (nscr == 1) then
-       print*, "* Initialize Scalar"
-       R = 0.25d0 * (x(nx) - x(1))
-       cx = 0.5d0 * (x(1) + x(nx))
-       cy = 0.5d0 * (y(1) + y(ny))
-       cz = 0.5d0 * (z(1) + z(nz))
-       delt = smooth_width * R
-       do k = 1, nz
-          do j = 1, ny
-             do i = 1, nx
-                dist = sqrt( (x(i) - cx)**2 + (y(j) - cy)**2 + (z(k) - cz)**2 )
-                phi(i,j,k) = 0.5d0 * (1.d0 - tanh((dist - R) / delt))
-             end do
-          end do
-       end do
+       do k=1,nz; do j=1,ny; do i=1,nx
+          phi(i,j,k) = exp( - ((x(i)-(xc1+xc2)/2.d0)**2 + (y(j)-yc1)**2) / (2.d0*rv**2) )
+       end do; end do; end do
     end if
-
-    ! Destroy FFTW plans and deallocate arrays
-    call fftw_destroy_plan(plan_b_x)
-    call fftw_destroy_plan(plan_b_y)
-    call fftw_destroy_plan(plan_b_z)
-    deallocate(uhatx,uhaty,uhatz,inx,iny,inz)
-
-  end subroutine initialize_homogeneous_isotropic_turbulence
+  end subroutine initialize_vortex_merge
 
   subroutine set_initialization_type(typesim)
     !> Sets the function pointer to the appropriate initialization function
@@ -583,7 +472,7 @@ contains
     case(5)
        init_condition => initialize_mixing_layer
     case(6)
-       init_condition => initialize_homogeneous_isotropic_turbulence
+       init_condition => initialize_vortex_merge
     case default
        print *, "Warning: Invalid initialization method selected. Using default."
        init_condition => initialize_vortex  ! Fallback to default method

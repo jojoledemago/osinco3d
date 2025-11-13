@@ -23,7 +23,7 @@ zlz = 5.0
 
 x0 = 0. 
 y0 = -5. 
-z0 = -2.5
+z0 = -2.5 
 /End
 
 !<--------------->!
@@ -69,9 +69,9 @@ sc = 1. !> Schmidt number
 &VisuParameters
 !<--------------->!
 nfre = 500
-nsve = 5000
+nsve = 2500
 initstat = 0 !> Time for beginng statistic save
-xpro = 10.
+xpro = 12.
 ypro = 0.
 zpro = 0.
 /End
@@ -90,5 +90,5 @@ init_noise_z = 0.00  !> Turbulence intensity (1=100%) !! Intiale condition
 !<--------------->!
 iles = 1
 ! cs = 0.17 # standard
-cs = 0.15
+cs = 0.14
 /End

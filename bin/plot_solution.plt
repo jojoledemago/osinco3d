@@ -22,11 +22,11 @@ set tics out # Tics vers l'exterieur
 unset ztics
 #splot 'outputs/solution_xy.dat' u 1:2:3 t "Ux"
 #splot 'outputs/solution_xy.dat' u 1:2:6 t "P"
-#splot 'outputs/solution_xy.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9)) t "vort"
+splot 'outputs/solution_xy.dat' u 1:2:(sqrt($7*$7+$8*$8+$9*$9)) t "vort"
 #splot 'outputs/solution_xy.dat' u 1:2:12 t "PHI"
 #splot 'outputs/solution_xz.dat' u 1:2:4 t "Uy"
 #splot 'outputs/solution_xz.dat' u 1:2:5 t "Uz"
-splot 'outputs/solution_xz.dat' u 1:2:12 t "PHI"
+#splot 'outputs/solution_xz.dat' u 1:2:12 t "PHI"
 #splot 'outputs/solution_xz.dat' u 1:2:11
 #splot 'outputs/solution_yz.dat' u 2:1:(sqrt($7*$7+$8*$8+$9*$9))
 #splot 'outputs/solution_yz.dat' u 2:1:11

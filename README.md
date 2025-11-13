@@ -74,7 +74,7 @@ The `parameters.o3d` file contains various parameters that control the simulatio
     - 6: Vortex Merge
 - `l0`: characteristic size of the flow field
 - `u0`: characteristic velocity of the flow field
-- `re`: Reynolds number of the flow, defined as $Re = \frac{u_0 \cdot l_0}{\nu}$ (nu is the kinematic viscosity)
+- `re`: Reynolds number of the flow, defined as $Re = \frac{u_0 \cdot l_0}{\nu}$ ($\nu$ is the kinematic viscosity)
 - `ratio`: ratio between the maximum and minimum velocity in the domain. This parameter depends on the simulation type `typesim`
 
 ### Domain

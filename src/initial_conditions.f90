@@ -212,8 +212,8 @@ contains
     print *, "* Condition Initiale for a Planar Jet simulation"
 
     pi = acos(-1.d0)
-    u1 = u0 * ratio
-    u2 = u0 - ratio
+    u1 = u0 
+    u2 = u1 * ratio
     phi1 = 1.d0
     phi2 = 0.d0
     theta_o = 1./30. * l0
@@ -525,7 +525,6 @@ contains
     if (init_noise_z > 0.d0) then
        call print_noise_gene("Uz")
     end if
-
     do k = 1, nz
        k0 = 10.d0
        s = 11.d0 / 3.d0
@@ -543,6 +542,7 @@ contains
                   u0 * init_noise_y * u_base(j) * uy_noise(i)
              uz(i,j,k) = uz(i,j,k) + &
                   u0 * init_noise_z * u_base(j) * uz_noise(i)
+
           end do
        end do
     end do
@@ -588,20 +588,41 @@ contains
     end if
 
     ! Add oscillations to velocity components
-    do k = 1, nz
-       do j = 1, ny
-          do i = 1, nx
-             phase_x = 2.d0 * pi * kx * x(i) / xlx
+    if (typesim == 5 .or. typesim == 3) then
+       do k = 1, nz
+          do j = 1, ny
+             do i = 1, nx
 
-             ux(i,j,k) = ux(i,j,k) + &
-                  u0 * init_noise_x * u_base(j) * sin(phase_x)
-             uy(i,j,k) = uy(i,j,k) + &
-                  u0 * init_noise_y * u_base(j) * sin(phase_x)
-             uz(i,j,k) = uz(i,j,k) + &
-                  u0 * init_noise_z * u_base(j) * sin(phase_x)
+                ux(i,j,k) = ux(i,j,k) + &
+                     u0 * init_noise_x * u_base(j) * &
+                     (sin(8.d0 * pi * x(i) / xlx) &
+                     + sin(4.d0 * pi * x(i) / xlx) / 8.d0 &
+                     + sin(2.d0 * pi * x(i) / xlx) / 16.d0)
+                uy(i,j,k) = uy(i,j,k) + &
+                     u0 * init_noise_y * u_base(j) * &
+                     (cos(8.d0 * pi * x(i) / xlx) &
+                     + cos(4.d0 * pi * x(i) / xlx) / 8.d0 &
+                     + cos(2.d0 * pi * x(i) / xlx) / 16.d0)
+                uz(i,j,k) = uz(i,j,k)
+             end do
           end do
        end do
-    end do
+    else
+       do k = 1, nz
+          do j = 1, ny
+             do i = 1, nx
+                phase_x = 2.d0 * pi * kx * x(i) / xlx
+
+                ux(i,j,k) = ux(i,j,k) + &
+                     u0 * init_noise_x * u_base(j) * sin(phase_x)
+                uy(i,j,k) = uy(i,j,k) + &
+                     u0 * init_noise_y * u_base(j) * sin(phase_x)
+                uz(i,j,k) = uz(i,j,k) + &
+                     u0 * init_noise_z * u_base(j) * sin(phase_x)
+             end do
+          end do
+       end do
+    end if
 
     return
 

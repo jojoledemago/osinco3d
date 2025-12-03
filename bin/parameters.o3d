@@ -7,23 +7,23 @@ typesim = 5 !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex
 l0 = 1.
 u0 = 1.
 re = 3000.0
-ratio = -1.
+ratio = -1
 /End
 
 !<--------------->!
 &Domain
 !<--------------->!
-nx = 401 
-ny = 201
-nz = 101
+nx = 241 
+ny = 241
+nz = 81
 
-xlx = 20.
-yly = 10.
-zlz = 5.0
+xlx = 12.0
+yly = 12.0
+zlz = 4.0
 
 x0 = 0. 
-y0 = -5. 
-z0 = -2.5 
+y0 = -6. 
+z0 = -2.
 /End
 
 !<--------------->!
@@ -42,10 +42,10 @@ sim2d = 0
 &AdvanceTime
 !<--------------->!
 itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
-dt = 0.0040
+dt = 0.0015
 irestart = 0
 itstart = 1
-itstop = 25000
+itstop = 50000
 /End
 
 !<--------------->!
@@ -68,10 +68,10 @@ sc = 1. !> Schmidt number
 !<--------------->!
 &VisuParameters
 !<--------------->!
-nfre = 500
-nsve = 2500
+nfre = 0500
+nsve = 5000
 initstat = 0 !> Time for beginng statistic save
-xpro = 12.
+xpro = 6.
 ypro = 0.
 zpro = 0.
 /End
@@ -79,16 +79,16 @@ zpro = 0.
 !<--------------->!
 &InitInflow
 !<--------------->!
-ici = 3 !> Noise on initial condition (0: nothing, 1:oscillations, 2: noise, 3: both)
-init_noise_x = 0.00  !> Turbulence intensity (1=100%) !! Intiale condition
-init_noise_y = 0.06  !> Turbulence intensity (1=100%) !! Intiale condition
-init_noise_z = 0.00  !> Turbulence intensity (1=100%) !! Intiale condition
+ici = 2 !> Noise on initial condition (0: nothing, 1:oscillations, 2: noise, 3: both)
+init_noise_x = 0.03  !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise_y = 0.12  !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise_z = 0.03  !> Turbulence intensity (1=100%) !! Intiale condition
 /End
 
 !<--------------->!
 &LES
 !<--------------->!
 iles = 1
-! cs = 0.17 # standard
-cs = 0.14
+!cs  = 0.17 ! standard
+cs = 0.15
 /End

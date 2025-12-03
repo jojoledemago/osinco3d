@@ -6,16 +6,17 @@ unset surface
 set size ratio -1 
 set tics out
 set contour
+set grid
 #set xrange[0:pi]
-#set yrange[0:pi]
+set yrange[-5:5]
 #set cntrparam levels incremental -10.6, 0.05, -10
-set cntrparam levels 6
+set cntrparam levels 12
 set isosamples 150
 set key out
 #splot 'outputs/solution_xy.dat' u 1:2:3 w l t 'Ux'
-splot 'outputs/solution_xy.dat' u 1:2:4 w l t 'Uy'
+#splot 'outputs/solution_xy.dat' u 1:2:4 w l t 'Uy'
 #splot 'solution_xy.dat' u 1:2:5 w l t 'Uz'
-#splot 'outputs/solution_xy.dat' u 1:2:(0.5*sqrt($7*$7+$8*$8+$9*$9)) w l t 'Vorticity'
+splot 'outputs/solution_xy.dat' u 1:2:(0.5*sqrt($7*$7+$8*$8+$9*$9)) w l t 'Vorticity'
 #splot 'solution_xy.dat' u 1:2:9 w l t 'ROT_Z'
 #splot 'outputs/solution_xy.dat' u 1:2:10 w l t 'Q-criterion'
 #splot 'outputs/solution_xy.dat' u 1:2:11 w l t 'DIV(U)'

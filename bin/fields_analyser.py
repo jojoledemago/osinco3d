@@ -327,7 +327,7 @@ def divergence(ux, uy, uz, x, y, z, time,
     # x-direction
     if bc_x == 'periodic':
         dux_dx = (np.roll(ux, -1, axis=0) - np.roll(ux, 1, axis=0)) / (2*dx)
-    else:  # periodic
+    else:  # not periodic
         dux_dx = np.zeros_like(ux)
         dux_dx[1:-1,:,:] = (ux[2:,:,:] - ux[:-2,:,:]) / (2*dx)
         dux_dx[0,:,:] = (ux[1,:,:] - ux[0,:,:]) / dx
@@ -484,11 +484,39 @@ def turbulence_rms_analysis(x, y, z, ux, uy, uz, time):
     plt.tight_layout(rect=[0, 0, 1, 0.92])
     plt.show()
 
+# Corrected turbulence_spectrum function for fields_analyser.py
+# Replaces the original turbulence_spectrum function. Fixes:
+# - compute 1D energy spectra properly by summing velocity-component spectra
+# - interpolate directional spectra onto a common k grid to build E_total
+# - optional Hann window to reduce spectral leakage
+# - keeps original plotting layout and diagnostics
+
 def turbulence_spectrum(ux, uy, uz, x, y, z, time, Re,
-        bc_x='periodic', bc_y='free_slip', bc_z='periodic'):
+        bc_x='periodic', bc_y='free_slip', bc_z='periodic', window=False):
     """
-    Compute 1D energy spectra along each Cartesian direction, plus total E(k),
-    plot spectra with k^-5/3 reference and turbulence scales.
+    Compute 1D energy spectra along each Cartesian direction, plus an isotropic
+    estimate E_total(k) obtained by averaging directional spectra interpolated
+    onto a common k-grid.
+
+    Parameters
+    ----------
+    ux, uy, uz : ndarray
+        Velocity components with shape (nx, ny, nz).
+    x, y, z : 1D arrays
+        Coordinates (assumed uniform spacing in each direction).
+    time : float
+        Physical time (for titles).
+    Re : float
+        Reynolds number (used to compute nu and scales).
+    bc_* : str
+        Boundary condition tags (kept for API compatibility; not used here).
+    window : bool
+        If True apply a Hann window along the FFT axis to reduce leakage.
+
+    Returns
+    -------
+    k_center, E_total : ndarray
+        Wavenumber grid and isotropic energy estimate on that grid.
     """
     import numpy as np
     import matplotlib.pyplot as plt
@@ -498,21 +526,62 @@ def turbulence_spectrum(ux, uy, uz, x, y, z, time, Re,
     dx, dy, dz = x[1]-x[0], y[1]-y[0], z[1]-z[0]
     nu = 1.0 / Re
 
+    # Helper: optional Hann window applied along given axis
+    def apply_window(f, axis):
+        if not window:
+            return f
+        n = f.shape[axis]
+        w = np.hanning(n)
+        # reshape w for broadcasting
+        shape = [1]*f.ndim
+        shape[axis] = n
+        w = w.reshape(shape)
+        return f * w
+
     # === 1D energy spectra along each direction ===
-    def fft1d_energy(field, axis):
-        u_hat = np.fft.rfft(field, axis=axis) / np.sqrt(field.shape[axis])
+    def fft1d_energy_component(field, axis):
+        # optionally window
+        fwin = apply_window(field, axis)
+        # rFFT along axis
+        u_hat = np.fft.rfft(fwin, axis=axis)
+        # normalization: use Parseval-consistent normalization
+        # we'll divide by number of points along axis so that energy has correct units
+        N = field.shape[axis]
+        u_hat = u_hat / np.sqrt(N)
         axes_avg = tuple(i for i in range(field.ndim) if i != axis)
+        # mean over the other axes
         return 0.5 * np.mean(np.abs(u_hat)**2, axis=axes_avg)
 
-    E_kx = fft1d_energy(ux+uy+uz, axis=0)
-    E_ky = fft1d_energy(ux+uy+uz, axis=1)
-    E_kz = fft1d_energy(ux+uy+uz, axis=2)
+    # Compute spectra for each velocity component along each axis
+    E_kx_x = fft1d_energy_component(ux, axis=0)
+    E_kx_y = fft1d_energy_component(uy, axis=0)
+    E_kx_z = fft1d_energy_component(uz, axis=0)
+    E_kx = E_kx_x + E_kx_y + E_kx_z
 
+    E_ky_x = fft1d_energy_component(ux, axis=1)
+    E_ky_y = fft1d_energy_component(uy, axis=1)
+    E_ky_z = fft1d_energy_component(uz, axis=1)
+    E_ky = E_ky_x + E_ky_y + E_ky_z
+
+    E_kz_x = fft1d_energy_component(ux, axis=2)
+    E_kz_y = fft1d_energy_component(uy, axis=2)
+    E_kz_z = fft1d_energy_component(uz, axis=2)
+    E_kz = E_kz_x + E_kz_y + E_kz_z
+
+    # Wavenumber axes
     kx = 2*np.pi*np.fft.rfftfreq(nx, dx)
     ky = 2*np.pi*np.fft.rfftfreq(ny, dy)
     kz = 2*np.pi*np.fft.rfftfreq(nz, dz)
 
-    # === Derivatives with BCs ===
+    # Build a common k grid (use kx by default, but avoid zero-frequency issues)
+    k_center = kx
+
+    # Interpolate ky,kz spectra onto kx grid (extrapolate with constant fill)
+    interp_Eky = interp1d(ky, E_ky, bounds_error=False, fill_value=(E_ky[0], E_ky[-1]))
+    interp_Ekz = interp1d(kz, E_kz, bounds_error=False, fill_value=(E_kz[0], E_kz[-1]))
+    E_total = (E_kx + interp_Eky(k_center) + interp_Ekz(k_center)) / 3.0
+
+    # === Derivatives with BCs (kept from original, used to compute enstrophy/dissipation) ===
     def grad(f, axis, d, bc):
         df = np.zeros_like(f)
         if bc == 'periodic':
@@ -533,37 +602,37 @@ def turbulence_spectrum(ux, uy, uz, x, y, z, time, Re,
                 df[:,:,-1] = (f[:,:,-1] - f[:,:,-2]) / d
         return df
 
-    # === Compute vorticity and dissipation ===
     duxdx = grad(ux, 0, dx, bc_x); duxdy = grad(ux, 1, dy, bc_y); duxdz = grad(ux, 2, dz, bc_z)
     duydx = grad(uy, 0, dx, bc_x); duydy = grad(uy, 1, dy, bc_y); duydz = grad(uy, 2, dz, bc_z)
     duzdx = grad(uz, 0, dx, bc_x); duzdy = grad(uz, 1, dy, bc_y); duzdz = grad(uz, 2, dz, bc_z)
 
+    # Vorticity components (correct expressions)
     omega_x = duzdy - duydz
     omega_y = duxdz - duzdx
     omega_z = duydx - duxdy
+
     enstrophy = 0.5*np.mean(omega_x**2 + omega_y**2 + omega_z**2)
     epsilon = 2 * nu * enstrophy
-    eta = (nu**3 / epsilon)**0.25
+    # avoid division by zero
+    if epsilon <= 0:
+        eta = np.nan
+    else:
+        eta = (nu**3 / epsilon)**0.25
     delta = min(dx, dy, dz)
-    delta_over_eta = delta / eta
+    delta_over_eta = delta / eta if eta and (not np.isnan(eta)) else np.nan
 
     # Integral scale (approx)
-    Lx, Ly, Lz = x[-1]-x[0], y[-1]-y[0], z[-1]-z[0]
+    Lx = x[-1]-x[0]; Ly = y[-1]-y[0]; Lz = z[-1]-z[0]
     L_int = (Lx * Ly * Lz)**(1/3)
 
-    # === Build isotropic energy spectrum ===
-    interp_Eky = interp1d(ky, E_ky, bounds_error=False, fill_value="extrapolate")
-    interp_Ekz = interp1d(kz, E_kz, bounds_error=False, fill_value="extrapolate")
-    E_total = (E_kx + interp_Eky(kx) + interp_Ekz(kx)) / 3
-    k_center = kx
+    # Fit inertial range slope (choose valid mask)
+    nk1, nk2 = 2, 10
+    mask = (k_center > nk1) & (k_center < nk2) & (~np.isnan(E_total)) & (E_total>0)
+    slope_total, intercept_total = (np.nan, np.nan)
+    if np.count_nonzero(mask) >= 2:
+        slope_total, intercept_total = np.polyfit(np.log10(k_center[mask]), np.log10(E_total[mask]), 1)
 
-    # Fit inertial range slope (k=3–20)
-    nk1, nk2 = 3, 20
-    mask = (k_center > nk1) & (k_center < nk2)
-    slope_total, intercept_total = np.polyfit(np.log10(k_center[mask]),
-                                              np.log10(E_total[mask]), 1)
-
-    # === Print diagnostics ===
+    # Diagnostics print
     print_block("Turbulence spectrum diagnostics", [
         ("nu (viscosity)", f"{nu:.2e}"),
         ("Mean enstrophy", f"{enstrophy:.5f}"),
@@ -571,11 +640,11 @@ def turbulence_spectrum(ux, uy, uz, x, y, z, time, Re,
         ("Kolmogorov scale eta", f"{eta:.5f}"),
         ("Delta (grid scale)", f"{delta:.5f}"),
         ("Delta / eta", f"{delta_over_eta:.2f}"),
-        (f"Inertial range slope (k={nk1}-{nk2})", f"{slope_total:.2f}"),
+        (f"Inertial range slope (k={nk1}-{nk2})", f"{slope_total:.2f}" if not np.isnan(slope_total) else "N/A"),
         ("", "(expected: -1.67)")
     ])
 
-    # === Plot spectra ===
+    # === Plot spectra (preserve original layout) ===
     plt.figure(figsize=(16,9))
 
     # (1) Raw spectra
@@ -585,21 +654,22 @@ def turbulence_spectrum(ux, uy, uz, x, y, z, time, Re,
     plt.loglog(kz, E_kz, label=r'$E(k_z)$', linestyle='dotted')
     plt.loglog(k_center, E_total, 'k', linewidth=2, label=r'$E_{total}(k)$')
 
-    # Reference line k^-5/3
-    k_ref = np.linspace(nk1, nk2, 100)
-    C = E_total[np.argmin(np.abs(k_center - nk1))] * nk1**(5/3)
-    plt.loglog(k_ref, C*k_ref**(-5/3), 'k--', label=r'$k^{-5/3}$')
+    # Reference line k^-5/3 (use magnitude close to E_total at nk1 if available)
+    k_ref = np.linspace(nk1, nk2+12, 10)
+    if np.any((~np.isnan(E_total)) & (k_center>0)):
+        idx_ref = np.argmin(np.abs(k_center - nk1))
+        C = max(E_total[idx_ref], 1e-16) * (nk1**(5/3))
+        plt.loglog(k_ref, C*k_ref**(-5/3), 'k--', label=r'$k^{-5/3}$')
 
-    # Characteristic scales
     plt.axvline(1/L_int, color='green', linestyle='--', label=r'$k_L$ (large scale)')
     plt.axvline(np.pi/delta, color='red', linestyle='--', label=r'$k_\Delta$ (LES cutoff)')
-    plt.axvline(1/eta, color='orange', linestyle='--', label=r'$k_\eta$ (Kolmogorov)')
+    if (not np.isnan(eta)):
+        plt.axvline(1/eta, color='orange', linestyle='--', label=r'$k_\eta$ (Kolmogorov)')
 
-    # Measured slope
-    k_fit_line = np.linspace(nk1, nk2, 100)
-    E_fit_line = 10**intercept_total * k_fit_line**slope_total
-    plt.loglog(k_fit_line, E_fit_line, 'r--', linewidth=2,
-               label=rf"Measured slope = {slope_total:.2f}")
+    if not np.isnan(slope_total):
+        k_fit_line = np.linspace(nk1, nk2, 100)
+        E_fit_line = 10**intercept_total * k_fit_line**slope_total
+        plt.loglog(k_fit_line, E_fit_line, 'r--', linewidth=2, label=rf"Measured slope = {slope_total:.2f}")
 
     plt.xlabel(r"Wavenumber $k$")
     plt.ylabel("Energy")
@@ -609,11 +679,20 @@ def turbulence_spectrum(ux, uy, uz, x, y, z, time, Re,
 
     # (2) Compensated spectra
     plt.subplot(1,2,2)
-    plt.loglog(kx[1:], E_kx[1:]*kx[1:]**(5/3), label=r'$k_x^{5/3} E(k_x)$')
-    plt.loglog(ky[1:], E_ky[1:]*ky[1:]**(5/3), label=r'$k_y^{5/3} E(k_y)$')
-    plt.loglog(kz[1:], E_kz[1:]*kz[1:]**(5/3), label=r'$k_z^{5/3} E(k_z)$')
-    plt.loglog(k_center[1:], E_total[1:]*k_center[1:]**(5/3),
-               'k', linewidth=2, label=r'$k^{5/3} E_{total}(k)$')
+    # avoid k=0 when compensating
+    mask_k = kx > 0
+    if np.any(mask_k):
+        plt.loglog(kx[mask_k], E_kx[mask_k]*kx[mask_k]**(5/3), label=r'$k_x^{5/3} E(k_x)$')
+    mask_k = ky > 0
+    if np.any(mask_k):
+        plt.loglog(ky[mask_k], E_ky[mask_k]*ky[mask_k]**(5/3), label=r'$k_y^{5/3} E(k_y)$')
+    mask_k = kz > 0
+    if np.any(mask_k):
+        plt.loglog(kz[mask_k], E_kz[mask_k]*kz[mask_k]**(5/3), label=r'$k_z^{5/3} E(k_z)$')
+    mask_kc = k_center > 0
+    if np.any(mask_kc):
+        plt.loglog(k_center[mask_kc], E_total[mask_kc]*k_center[mask_kc]**(5/3), 'k', linewidth=2, label=r'$k^{5/3} E_{total}(k)$')
+
     plt.xlabel(r"Wavenumber $k$")
     plt.ylabel("Compensated Energy")
     plt.title("Compensated Spectra")
@@ -774,8 +853,8 @@ def les_analysis(ux, uy, uz, x, y, z, time, cs=0.17, x_plot=None, y_plot=None, z
     mean_tke = np.mean(tke)
 
     # Enstrophy (using the same BCs for derivatives)
-    omega_x = dwdx - dvdz
-    omega_y = dudz - dwdx
+    omega_x = dwdy - dvdz
+    omega_y = dwdz - dudx
     omega_z = dvdx - dudy
     enstrophy = 0.5*np.mean(omega_x**2 + omega_y**2 + omega_z**2)
 

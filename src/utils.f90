@@ -6,6 +6,46 @@ module utils
 
 contains
 
+  subroutine compute_envelope(g, dg, u1d, dy, ny, nsmooth)
+    !> Generic y-envelope from the base flow: g = |dU/dy| / max|dU/dy|
+    !> and its derivative dg = dg/dy (needed for curl(A)).
+    !> INPUT:
+    !> u1d(ny)  : base streamwise velocity profile (before any perturbation)
+    !> dy       : grid spacing in y
+    !> nsmooth  : number of 1-2-1 smoothing passes on g (0 = none)
+    !> OUTPUT:
+    !> g(ny), dg(ny)
+    implicit none
+    integer, intent(in) :: ny, nsmooth
+    real(kind=8), intent(in)  :: u1d(ny)
+    real(kind=8), intent(in) :: dy
+    real(kind=8), intent(out) :: g(ny), dg(ny)
+    real(kind=8) :: tmp(ny), gmax
+    integer :: j, p
+
+    ! |dU/dy|
+
+    call dery1D(g, u1d, dy)
+    g = abs(g)
+
+    ! optional smoothing (removes grid-scale noise before the 2nd derivative)
+    do p = 1, nsmooth
+       tmp = g
+       do j = 2, ny-1
+          g(j) = 0.25d0*tmp(j-1) + 0.5d0*tmp(j) + 0.25d0*tmp(j+1)
+       end do
+    end do
+
+    ! normalization between 0 and 1
+    gmax = maxval(g)
+    if (gmax > 0.d0) g = g / gmax
+
+    ! dg/dy
+    call dery1D(dg, g, dy)
+
+    return
+  end subroutine compute_envelope
+
   subroutine calcul_u_base(u_base, u, dy)
 
     real(kind=8), dimension(:), intent(out) :: u_base
@@ -111,9 +151,9 @@ contains
     do k = 2, nz-1
        do j = 2, ny-1
           do i = 2, nx-1
-             res_u = res_u + (abs(old_u(i,j,k) - u(i,j,k)) / (2.D0 * dt))**2.d0
-             res_v = res_v + (abs(old_v(i,j,k) - v(i,j,k)) / (2.D0 * dt))**2.d0
-             res_w = res_w + (abs(old_w(i,j,k) - w(i,j,k)) / (2.D0 * dt))**2.d0
+             res_u = res_u + (abs(old_u(i,j,k) - u(i,j,k)) / dt)**2.d0
+             res_v = res_v + (abs(old_v(i,j,k) - v(i,j,k)) / dt)**2.d0
+             res_w = res_w + (abs(old_w(i,j,k) - w(i,j,k)) / dt)**2.d0
              a(i,j,k) = abs(old_u(i,j,k) - u(i,j,k)) / (2.D0 * dt)
              b(i,j,k) = abs(old_v(i,j,k) - v(i,j,k)) / (2.D0 * dt)
              c(i,j,k) = abs(old_w(i,j,k) - w(i,j,k)) / (2.D0 * dt)
@@ -148,14 +188,14 @@ contains
     aa = (t_ref / u_ref) * linf_u
     bb = (t_ref / u_ref) * linf_v
     cc = (t_ref / u_ref) * linf_w
-    res_u = (t_ref / u_ref) * sqrt((1.d0 / real(nx*ny*nz)) * res_u)
-    res_v = (t_ref / u_ref) * sqrt((1.d0 / real(nx*ny*nz)) * res_v)
-    res_w = (t_ref / u_ref) * sqrt((1.d0 / real(nx*ny*nz)) * res_w)
+    res_u = (t_ref / u_ref) * sqrt((1.d0 / real((nx-2)*(ny-2)*(nz-2), kind=8)) * res_u)
+    res_v = (t_ref / u_ref) * sqrt((1.d0 / real((nx-2)*(ny-2)*(nz-2), kind=8)) * res_v)
+    res_w = (t_ref / u_ref) * sqrt((1.d0 / real((nx-2)*(ny-2)*(nz-2), kind=8)) * res_w)
 
     call print_residuals(res_u, res_v, res_w, aa, ia, ja, ka, bb, ib, jb, kb, cc, ic, jc, kc)
     call save_residu(it, res_u, res_v, res_w)
 
-    if (res_u > 1.d6 .or. res_u > 1.d6 .or. res_u > 1.d6) then
+    if (res_u > 1.d6 .or. res_v > 1.d6 .or. res_w > 1.d6) then
        print *, "residue too high"
        stop
     end if

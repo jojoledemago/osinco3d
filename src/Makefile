@@ -27,6 +27,7 @@ SRCDIR     ?= ./
 OBJDIR     ?= $(SRCDIR)/build
 EXEDIR     ?= $(SRCDIR)/../bin
 EXECUTABLE = $(EXEDIR)/osinco3d.app
+#EXECUTABLE = ./osinco3d.app
 
 #===============================================================================
 # Source Files
@@ -35,7 +36,8 @@ SOURCES = $(SRCDIR)/functions.f90 \
           $(SRCDIR)/derivation.f90 \
           $(SRCDIR)/noise_module.f90 \
           $(SRCDIR)/poisson.f90 \
-          $(SRCDIR)/poisson_multigrid.f90 \
+          $(SRCDIR)/multigrid_poisson.f90 \
+          $(SRCDIR)/fft_poisson.f90 \
           $(SRCDIR)/initialization.f90 \
           $(SRCDIR)/IOfunctions.f90 \
           $(SRCDIR)/utils.f90 \

@@ -5,258 +5,259 @@ module les_turbulence
   use functions
   implicit none
 
+  !> LES statistics and printouts (nu_t, tau_ij, dtau_ij/dxj) at every call.
+  !> Set to .false. (or drive it from the main program with
+  !> mod(itime, ioutput) == 0) to skip the global reductions and the I/O.
+  logical :: les_verbose = .true.
+
+  !> Work array (allocated once) for calculate_dtau_ij_dxj
+  real(kind=8), allocatable, private :: les_scratch(:,:,:)
+
 contains
 
-  subroutine calculate_nu_t(nu_t, ux, uy, uz, dx, dy, dz, cs, delta)
-    !> Calculates the sub-grid scale turbulent viscosity (nu_t) using the 
-    !> Smagorinsky model.
+  subroutine compute_velocity_gradients(g, ux, uy, uz, dx, dy, dz)
+    !> Computes the 9 velocity gradients once, so that they can be shared
+    !> between the LES model and the convective/viscous terms.
     !>
-    !> INPUT:
-    !> ux(nx, ny, nz)    : Current x-component of velocity
-    !> uy(nx, ny, nz)    : Current y-component of velocity
-    !> uz(nx, ny, nz)    : Current z-component of velocity
-    !> dx                : Grid spacing in the x-direction
-    !> dy                : Grid spacing in the y-direction
-    !> dz                : Grid spacing in the z-direction
-    !> cs                : Smagorinsky constant
-    !> delta             : filter size
+    !> OUTPUT: g(nx,ny,nz,9), with
+    !>   g(:,:,:,1) = dux/dx   g(:,:,:,2) = dux/dy   g(:,:,:,3) = dux/dz
+    !>   g(:,:,:,4) = duy/dx   g(:,:,:,5) = duy/dy   g(:,:,:,6) = duy/dz
+    !>   g(:,:,:,7) = duz/dx   g(:,:,:,8) = duz/dy   g(:,:,:,9) = duz/dz
+
+    real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+    real(kind=8), intent(in) :: dx, dy, dz
+    real(kind=8), intent(out) :: g(:,:,:,:)
+
+    call derxi(g(:,:,:,1), ux, dx)
+    call deryp(g(:,:,:,2), ux, dy)
+    call derzp(g(:,:,:,3), ux, dz)
+
+    call derxp(g(:,:,:,4), uy, dx)
+    call deryi(g(:,:,:,5), uy, dy)
+    call derzp(g(:,:,:,6), uy, dz)
+
+    call derxp(g(:,:,:,7), uz, dx)
+    call deryp(g(:,:,:,8), uz, dy)
+    call derzi(g(:,:,:,9), uz, dz)
+
+  end subroutine compute_velocity_gradients
+
+  subroutine calculate_nu_t_from_grad(nu_t, g, cs, delta, nu)
+    !> Smagorinsky model: nu_t = (cs*delta)**2 * |S|, computed from the
+    !> already available gradients (see compute_velocity_gradients).
     !>
-    !> OUTPUT:
-    !> nu_t(nx, ny, nz)  : Calculated sub-grid scale turbulent viscosity
+    !> INPUT:  g(nx,ny,nz,9) : velocity gradients
+    !>         cs, delta     : Smagorinsky constant, filter size
+    !>         nu            : molecular viscosity (used for statistics output)
+    !> OUTPUT: nu_t(nx,ny,nz)
 
-    implicit none
+    real(kind=8), intent(in) :: g(:,:,:,:)
+    real(kind=8), intent(in) :: cs, delta, nu
+    real(kind=8), intent(out) :: nu_t(:,:,:)
 
-    ! Input arrays
-    real(kind=8), dimension(:,:,:), intent(in) :: ux, uy, uz
-    real(kind=8), intent(in) :: dx, dy, dz, cs, delta
-
-    ! Output array
-    real(kind=8), dimension(:,:,:), intent(out) :: nu_t
-
-    ! Local variables
     integer :: i, j, k, nx, ny, nz
-    real(kind=8), allocatable :: duxdx(:,:,:), duxdy(:,:,:), duxdz(:,:,:)
-    real(kind=8), allocatable :: duydx(:,:,:), duydy(:,:,:), duydz(:,:,:)
-    real(kind=8), allocatable :: duzdx(:,:,:), duzdy(:,:,:), duzdz(:,:,:)
-    real(kind=8) :: s11, s22, s33, s12, s13, s23, S_mag
+    real(kind=8) :: s11, s22, s33, s12, s13, s23, s_mag, cs2
     real(kind=8) :: stats(6)
 
-    ! Get dimensions
-    nx = size(ux, 1)
-    ny = size(ux, 2)
-    nz = size(ux, 3)
+    nx = size(g, 1)
+    ny = size(g, 2)
+    nz = size(g, 3)
 
-    ! Allocate temporary arrays
-    allocate(duxdx(nx,ny,nz), duxdy(nx,ny,nz), duxdz(nx,ny,nz))
-    allocate(duydx(nx,ny,nz), duydy(nx,ny,nz), duydz(nx,ny,nz))
-    allocate(duzdx(nx,ny,nz), duzdy(nx,ny,nz), duzdz(nx,ny,nz))
+    cs2 = (cs * delta)**2
 
-    ! Derivatives of ux
-    call derxi(duxdx, ux, dx)
-    call deryp(duxdy, ux, dy)
-    call derzp(duxdz, ux, dz)
-
-    ! Derivatives of uy
-    call derxp(duydx, uy, dx)
-    call deryi(duydy, uy, dy)
-    call derzp(duydz, uy, dz)
-
-    ! Derivatives of uz
-    call derxp(duzdx, uz, dx)
-    call deryp(duzdy, uz, dy)
-    call derzi(duzdz, uz, dz)
-
-    ! Compute turbulent viscosity
+    !$omp parallel do collapse(2) default(shared) private(i, s11, s22, s33, s12, s13, s23, s_mag)
     do k = 1, nz
        do j = 1, ny
           do i = 1, nx
              ! Symmetric strain rate tensor components
-             s11 = duxdx(i,j,k)
-             s22 = duydy(i,j,k)
-             s33 = duzdz(i,j,k)
-             s12 = 0.5d0 * (duxdy(i,j,k) + duydx(i,j,k))
-             s13 = 0.5d0 * (duxdz(i,j,k) + duzdx(i,j,k))
-             s23 = 0.5d0 * (duydz(i,j,k) + duzdy(i,j,k))
+             s11 = g(i,j,k,1)
+             s22 = g(i,j,k,5)
+             s33 = g(i,j,k,9)
+             s12 = 0.5d0 * (g(i,j,k,2) + g(i,j,k,4))
+             s13 = 0.5d0 * (g(i,j,k,3) + g(i,j,k,7))
+             s23 = 0.5d0 * (g(i,j,k,6) + g(i,j,k,8))
 
-             ! Magnitude of strain rate tensor |S| = sqrt(2 * S_ij * S_ij)
-             S_mag = sqrt(2.0d0 * (s11**2 + s22**2 + s33**2 + 2.0d0 * (s12**2 + s13**2 + s23**2)))
+             ! |S| = sqrt(2 * S_ij * S_ij)
+             s_mag = sqrt(2.0d0 * (s11**2 + s22**2 + s33**2 + &
+                  2.0d0 * (s12**2 + s13**2 + s23**2)))
 
-             ! Smagorinsky viscosity
-             nu_t(i,j,k) = (cs * delta)**2 * S_mag
+             nu_t(i,j,k) = cs2 * s_mag
           end do
        end do
     end do
-    stats = function_stats(nu_t, nx, ny, nz)
-    call print_nu_t_statistics(stats)
 
-    ! Deallocate arrays
-    deallocate(duxdx, duxdy, duxdz)
-    deallocate(duydx, duydy, duydz)
-    deallocate(duzdx, duzdy, duzdz)
+    if (les_verbose) then
+       stats = function_stats(nu_t, nx, ny, nz)
+       call print_nu_t_statistics(stats, nu)
+    end if
+
+  end subroutine calculate_nu_t_from_grad
+
+  subroutine calculate_tau_ij_from_grad(tau_ij, g, nu_t)
+    !> Sub-grid scale stress tensor tau_ij from the already computed gradients.
+    !>
+    !> OUTPUT: tau_ij(nx,ny,nz,6) :
+    !>     1 = tau_xx, 2 = tau_yy, 3 = tau_zz,
+    !>     4 = tau_xy, 5 = tau_xz, 6 = tau_yz
+
+    real(kind=8), intent(out) :: tau_ij(:,:,:,:)
+    real(kind=8), intent(in) :: g(:,:,:,:)
+    real(kind=8), intent(in) :: nu_t(:,:,:)
+
+    integer :: i, j, k, nx, ny, nz
+    real(kind=8) :: nut
+
+    nx = size(g, 1)
+    ny = size(g, 2)
+    nz = size(g, 3)
+
+    !$omp parallel do collapse(2) default(shared) private(i, nut)
+    do k = 1, nz
+       do j = 1, ny
+          do i = 1, nx
+             nut = nu_t(i,j,k)
+             tau_ij(i,j,k,1) = -2.d0 * nut * g(i,j,k,1)                 ! tau_xx
+             tau_ij(i,j,k,2) = -2.d0 * nut * g(i,j,k,5)                 ! tau_yy
+             tau_ij(i,j,k,3) = -2.d0 * nut * g(i,j,k,9)                 ! tau_zz
+             tau_ij(i,j,k,4) = -nut * (g(i,j,k,2) + g(i,j,k,4))         ! tau_xy
+             tau_ij(i,j,k,5) = -nut * (g(i,j,k,3) + g(i,j,k,7))         ! tau_xz
+             tau_ij(i,j,k,6) = -nut * (g(i,j,k,6) + g(i,j,k,8))         ! tau_yz
+          end do
+       end do
+    end do
+
+    if (les_verbose) call print_tau_ij_max_values(tau_ij)
+
+  end subroutine calculate_tau_ij_from_grad
+
+  subroutine calculate_nu_t(nu_t, ux, uy, uz, dx, dy, dz, cs, delta, nu)
+    !> Calculates the sub-grid scale turbulent viscosity (nu_t) using the
+    !> Smagorinsky model.
+    !>
+    !> Interface kept for backward compatibility. If the gradients are
+    !> already available, prefer compute_velocity_gradients followed by
+    !> calculate_nu_t_from_grad (avoids recomputing 9 derivatives).
+    !>
+    !> INPUT:
+    !> ux, uy, uz (nx, ny, nz) : velocity components
+    !> dx, dy, dz              : grid spacings
+    !> cs                      : Smagorinsky constant
+    !> delta                   : filter size
+    !> nu                      : molecular viscosity
+    !>
+    !> OUTPUT:
+    !> nu_t(nx, ny, nz)        : sub-grid scale turbulent viscosity
+
+    real(kind=8), dimension(:,:,:), intent(in) :: ux, uy, uz
+    real(kind=8), intent(in) :: dx, dy, dz, cs, delta, nu
+    real(kind=8), dimension(:,:,:), intent(out) :: nu_t
+
+    real(kind=8), allocatable :: g(:,:,:,:)
+
+    allocate(g(size(ux,1), size(ux,2), size(ux,3), 9))
+    call compute_velocity_gradients(g, ux, uy, uz, dx, dy, dz)
+    call calculate_nu_t_from_grad(nu_t, g, cs, delta, nu)
+    deallocate(g)
 
   end subroutine calculate_nu_t
 
   subroutine calculate_tau_ij(tau_ij, ux, uy, uz, dx, dy, dz, nu_t)
-    !> Calculates the sub-grid scale stress tensor (tau_ij) for a 
+    !> Calculates the sub-grid scale stress tensor (tau_ij) for a
     !> Large Eddy Simulation (LES).
     !>
-    !> This subroutine computes the components of the sub-grid stress tensor 
-    !> using the filtered velocity field and the sub-grid scale turbulent 
-    !> viscosity (nu_t). 
-    !> The stress tensor represents the effects of unresolved small-scale 
-    !> motions on the resolved velocity field.
+    !> Interface kept for backward compatibility (see calculate_tau_ij_from_grad).
     !>
-    !> INPUT: 
-    !> ux(nx, ny, nz)    : x-component of the velocity field
-    !> uy(nx, ny, nz)    : y-component of the velocity field
-    !> uz(nx, ny, nz)    : z-component of the velocity field
-    !> nu_t(nx, ny, nz)  : Sub-grid scale turbulent viscosity
-    !> dx                : Grid spacing in the x-direction
-    !> dy                : Grid spacing in the y-direction
-    !> dz                : Grid spacing in the z-direction
+    !> INPUT:
+    !> ux, uy, uz (nx, ny, nz) : velocity components
+    !> nu_t(nx, ny, nz)        : sub-grid scale turbulent viscosity
+    !> dx, dy, dz              : grid spacings
     !>
-    !> OUTPUT: 
-    !> tau_ij(nx, ny, nz, 6) : Sub-grid scale stress tensor, where:
-    !>     tau_ij(:,:,:,1) = tau_xx (normal stress in x-direction)
-    !>     tau_ij(:,:,:,2) = tau_yy (normal stress in y-direction)
-    !>     tau_ij(:,:,:,3) = tau_zz (normal stress in z-direction)
-    !>     tau_ij(:,:,:,4) = tau_xy (shear stress between x and y)
-    !>     tau_ij(:,:,:,5) = tau_xz (shear stress between x and z)
-    !>     tau_ij(:,:,:,6) = tau_yz (shear stress between y and z)
-    !>
-    !> The stress tensor is symmetric: 
-    !> tau_xy = tau_yx, tau_xz = tau_zx, tau_yz = tau_zy.
+    !> OUTPUT:
+    !> tau_ij(nx, ny, nz, 6) :
+    !>     tau_ij(:,:,:,1) = tau_xx
+    !>     tau_ij(:,:,:,2) = tau_yy
+    !>     tau_ij(:,:,:,3) = tau_zz
+    !>     tau_ij(:,:,:,4) = tau_xy
+    !>     tau_ij(:,:,:,5) = tau_xz
+    !>     tau_ij(:,:,:,6) = tau_yz
+    !> The tensor is symmetric (tau_yx = tau_xy, etc.).
 
     real(kind=8), dimension(:,:,:,:), intent(out) :: tau_ij
     real(kind=8), dimension(:,:,:), intent(in) :: ux, uy, uz, nu_t
     real(kind=8), intent(in) :: dx, dy, dz
 
-    integer :: nx, ny, nz
-    real(kind=8), allocatable, dimension(:,:,:) :: duxdx, duxdy, duxdz
-    real(kind=8), allocatable, dimension(:,:,:) :: duydx, duydy, duydz
-    real(kind=8), allocatable, dimension(:,:,:) :: duzdx, duzdy, duzdz
+    real(kind=8), allocatable :: g(:,:,:,:)
 
-    ! Grid dimensions
-    nx = size(ux, 1)
-    ny = size(ux, 2)
-    nz = size(ux, 3)
+    allocate(g(size(ux,1), size(ux,2), size(ux,3), 9))
+    call compute_velocity_gradients(g, ux, uy, uz, dx, dy, dz)
+    call calculate_tau_ij_from_grad(tau_ij, g, nu_t)
+    deallocate(g)
 
-    ! Allocate arrays for partial derivatives
-    allocate(duxdx(nx,ny,nz), duxdy(nx,ny,nz), duxdz(nx,ny,nz))
-    allocate(duydx(nx,ny,nz), duydy(nx,ny,nz), duydz(nx,ny,nz))
-    allocate(duzdx(nx,ny,nz), duzdy(nx,ny,nz), duzdz(nx,ny,nz))
-
-    ! Compute the partial derivatives of ux
-    call derxi(duxdx, ux, dx)
-    call deryp(duxdy, ux, dy)
-    call derzp(duxdz, ux, dz)
-
-    ! Compute the partial derivatives of uy
-    call derxp(duydx, uy, dx)
-    call deryi(duydy, uy, dy)
-    call derzp(duydz, uy, dz)
-
-    ! Compute the partial derivatives of uz
-    call derxp(duzdx, uz, dx)
-    call deryp(duzdy, uz, dy)
-    call derzi(duzdz, uz, dz)
-
-    tau_ij(:,:,:,1) = -2.d0 * nu_t(:,:,:) * duxdx(:,:,:)    !> tau_xx
-    tau_ij(:,:,:,2) = -2.d0 * nu_t(:,:,:) * duydy(:,:,:)    !> tau_yy
-    tau_ij(:,:,:,3) = -2.d0 * nu_t(:,:,:) * duzdz(:,:,:)    !> tau_zz
-    tau_ij(:,:,:,4) = -nu_t(:,:,:) * (duxdy(:,:,:) + duydx) !> tau_xy
-    tau_ij(:,:,:,5) = -nu_t(:,:,:) * (duxdz(:,:,:) + duzdx) !> tau_xz
-    tau_ij(:,:,:,6) = -nu_t(:,:,:) * (duydz(:,:,:) + duzdy) !> tau_yz
-
-    ! Deallocate arrays
-    deallocate(duxdx, duxdy, duxdz)
-    deallocate(duydx, duydy, duydz)
-    deallocate(duzdx, duzdy, duzdz)
-
-    return
   end subroutine calculate_tau_ij
 
   subroutine calculate_dtau_ij_dxj(dtau_dx, dtau_dy, dtau_dz, &
        tau_ij, dx, dy, dz)
-    !> Calculates the divergence of the sub-grid scale stress tensor for a 
+    !> Calculates the divergence of the sub-grid scale stress tensor for a
     !> Large Eddy Simulation (LES).
     !>
-    !> This subroutine computes the partial derivatives of the sub-grid scale 
-    !> stress tensor (tau_ij)
-    !> with respect to the spatial coordinates x, y, and z. These derivatives 
-    !> represent the contribution
-    !> of the sub-grid scale stresses to the momentum equation.
-    !>
     !> INPUT:
-    !> tau_ij(nx, ny, nz, 6) : Sub-grid scale stress tensor, where:
-    !>     tau_ij(:,:,:,1) = tau_xx (normal stress in x-direction)
-    !>     tau_ij(:,:,:,2) = tau_yy (normal stress in y-direction)
-    !>     tau_ij(:,:,:,3) = tau_zz (normal stress in z-direction)
-    !>     tau_ij(:,:,:,4) = tau_xy (shear stress between x and y)
-    !>     tau_ij(:,:,:,5) = tau_xz (shear stress between x and z)
-    !>     tau_ij(:,:,:,6) = tau_yz (shear stress between y and z)
-    !> dx                 : Grid spacing in the x-direction
-    !> dy                 : Grid spacing in the y-direction
-    !> dz                 : Grid spacing in the z-direction
+    !> tau_ij(nx, ny, nz, 6) : sub-grid scale tensor (order: xx, yy, zz,
+    !>                         xy, xz, yz)
+    !> dx, dy, dz            : grid spacings
     !>
     !> OUTPUT:
-    !> dtau_dx(nx, ny, nz) : 
-    !>          Divergence of tau_ij in the x-direction (d(tau_ij)/dx_j)
-    !> dtau_dy(nx, ny, nz) : 
-    !>          Divergence of tau_ij in the y-direction (d(tau_ij)/dy_j)
-    !> dtau_dz(nx, ny, nz) : 
-    !>          Divergence of tau_ij in the z-direction (d(tau_ij)/dz_j)
+    !> dtau_dx(nx, ny, nz) : d(tau_xj)/dxj
+    !> dtau_dy(nx, ny, nz) : d(tau_yj)/dxj
+    !> dtau_dz(nx, ny, nz) : d(tau_zj)/dxj
     !>
-    !> The divergence components are computed for each of the six terms in the 
-    !> stress tensor using central finite differences.
+    !> A single work array is used (instead of 9); the summation order is
+    !> identical to the previous version.
 
-    implicit none
     real(kind=8), dimension(:,:,:,:), intent(in) :: tau_ij
     real(kind=8), intent(in) :: dx, dy, dz
     real(kind=8), dimension(:,:,:), intent(out) :: dtau_dx, dtau_dy, dtau_dz
 
     integer :: nx, ny, nz
-    real(kind=8), allocatable, dimension(:,:,:) :: &
-         dtauxx_dx, dtauxy_dx, dtauxz_dx
-    real(kind=8), allocatable, dimension(:,:,:) :: &
-         dtauxy_dy, dtauyy_dy, dtauyz_dy
-    real(kind=8), allocatable, dimension(:,:,:) :: &
-         dtauxz_dz, dtauyz_dz, dtauzz_dz
 
-    ! Get grid dimensions
     nx = size(tau_ij, 1)
     ny = size(tau_ij, 2)
     nz = size(tau_ij, 3)
 
-    ! Allocate arrays for partial derivatives
-    allocate(dtauxx_dx(nx,ny,nz), dtauxy_dy(nx,ny,nz), dtauxz_dz(nx,ny,nz))
-    allocate(dtauxy_dx(nx,ny,nz), dtauyy_dy(nx,ny,nz), dtauyz_dz(nx,ny,nz))
-    allocate(dtauxz_dx(nx,ny,nz), dtauyz_dy(nx,ny,nz), dtauzz_dz(nx,ny,nz))
+    if (allocated(les_scratch)) then
+       if (any(shape(les_scratch) /= [nx, ny, nz])) deallocate(les_scratch)
+    end if
+    if (.not. allocated(les_scratch)) allocate(les_scratch(nx, ny, nz))
 
-    ! Compute derivatives in the x-component
-    call derxp(dtauxx_dx, tau_ij(:,:,:,1), dx)
-    call deryp(dtauxy_dy, tau_ij(:,:,:,4), dy)
-    call derzp(dtauxz_dz, tau_ij(:,:,:,5), dz)
+    ! tau_ij(nx, ny, nz, 6) :      ! 
+    !     tau_ij(:,:,:,1) = tau_xx !
+    !     tau_ij(:,:,:,2) = tau_yy !
+    !     tau_ij(:,:,:,3) = tau_zz !
+    !     tau_ij(:,:,:,4) = tau_xy !
+    !     tau_ij(:,:,:,5) = tau_xz !
+    !     tau_ij(:,:,:,6) = tau_yz !
 
-    ! Compute derivatives in the y-component
-    call derxp(dtauxy_dx, tau_ij(:,:,:,4), dx)
-    call deryp(dtauyy_dy, tau_ij(:,:,:,2), dy)
-    call derzp(dtauyz_dz, tau_ij(:,:,:,6), dz)
+    ! x-component : d(tau_xx)/dx + d(tau_xy)/dy + d(tau_xz)/dz
+    call derxp(dtau_dx, tau_ij(:,:,:,1), dx)
+    call deryi(les_scratch, tau_ij(:,:,:,4), dy)
+    dtau_dx = dtau_dx + les_scratch
+    call derzi(les_scratch, tau_ij(:,:,:,5), dz)
+    dtau_dx = dtau_dx + les_scratch
 
-    ! Compute derivatives in the z-component
-    call derxp(dtauxz_dx, tau_ij(:,:,:,5), dx)
-    call deryp(dtauyz_dy, tau_ij(:,:,:,6), dy)
-    call derzp(dtauzz_dz, tau_ij(:,:,:,3), dz)
+    ! y-component : d(tau_xy)/dx + d(tau_yy)/dy + d(tau_yz)/dz
+    call derxi(dtau_dy, tau_ij(:,:,:,4), dx)
+    call deryp(les_scratch, tau_ij(:,:,:,2), dy)
+    dtau_dy = dtau_dy + les_scratch
+    call derzi(les_scratch, tau_ij(:,:,:,6), dz)
+    dtau_dy = dtau_dy + les_scratch
 
-    ! Sum up contributions for each component
-    dtau_dx = dtauxx_dx + dtauxy_dy + dtauxz_dz  ! d(tau_ij)/dxj for x-component
-    dtau_dy = dtauxy_dx + dtauyy_dy + dtauyz_dz  ! d(tau_ij)/dyj for y-component
-    dtau_dz = dtauxz_dx + dtauyz_dy + dtauzz_dz  ! d(tau_ij)/dzj for z-component
+    ! z-component : d(tau_xz)/dx + d(tau_yz)/dy + d(tau_zz)/dz
+    call derxi(dtau_dz, tau_ij(:,:,:,5), dx)
+    call deryi(les_scratch, tau_ij(:,:,:,6), dy)
+    dtau_dz = dtau_dz + les_scratch
+    call derzp(les_scratch, tau_ij(:,:,:,3), dz)
+    dtau_dz = dtau_dz + les_scratch
 
-    ! Deallocate arrays
-    deallocate(dtauxx_dx, dtauxy_dy, dtauxz_dz)
-    deallocate(dtauxy_dx, dtauyy_dy, dtauyz_dz)
-    deallocate(dtauxz_dx, dtauyz_dy, dtauzz_dz)
+    if (les_verbose) call print_dtau_ij_dxj_max_values(dtau_dx, dtau_dy, dtau_dz)
 
     return
   end subroutine calculate_dtau_ij_dxj

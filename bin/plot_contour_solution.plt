@@ -7,8 +7,8 @@ set size ratio -1
 set tics out
 set contour
 set grid
-#set xrange[0:pi]
-set yrange[-5:5]
+set xrange[0:pi]
+set yrange[0:pi]
 #set cntrparam levels incremental -10.6, 0.05, -10
 set cntrparam levels 12
 set isosamples 150
@@ -17,11 +17,13 @@ set key out
 #splot 'outputs/solution_xy.dat' u 1:2:4 w l t 'Uy'
 #splot 'solution_xy.dat' u 1:2:5 w l t 'Uz'
 splot 'outputs/solution_xy.dat' u 1:2:(0.5*sqrt($7*$7+$8*$8+$9*$9)) w l t 'Vorticity'
-#splot 'solution_xy.dat' u 1:2:9 w l t 'ROT_Z'
+#splot 'outputs/solution_xy.dat' u 1:2:12 w l t 'Passif Scalar'
+#splot 'outputs/solution_xy.dat' u 1:2:9 w l t 'ROT_Z'
 #splot 'outputs/solution_xy.dat' u 1:2:10 w l t 'Q-criterion'
 #splot 'outputs/solution_xy.dat' u 1:2:11 w l t 'DIV(U)'
 #splot 'outputs/solution_xy.dat' u 1:2:6 w l t 'P'
 #splot 'outputs/solution_xz.dat' u 1:2:10 w l t 'Q-criterion'
+#splot 'outputs/solution_xz.dat' u 1:2:(0.5*sqrt($7*$7+$8*$8+$9*$9)) w l t 'Vorticity'
 #splot 'outputs/solution_yz.dat' u 2:1:10 w l t 'Q-criterion'
 #splot 'outputs/solution_yz.dat' u 2:1:(0.5*sqrt($7*$7+$8*$8+$9*$9)) w l t 'Vorticity'
 #splot 'outputs/solution_yz.dat' u 2:1:8 w l t 'rot_x'

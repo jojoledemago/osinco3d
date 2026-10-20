@@ -42,7 +42,7 @@ program osinco3d
   end if
   if (ici == 2 .or. ici == 3) then
      call add_turbulent_init(ux, uy, uz, &
-          nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z, typesim)
+          nx, ny, nz, dy, u0, init_noise_x, init_noise_y, init_noise_z)
   end if
   if (ici == 1 .or. ici == 3) then
      call add_oscillations_init(ux, uy, uz, &
@@ -106,7 +106,7 @@ program osinco3d
           fux, fuy, fuz, re, adt, bdt, cdt, itime, itscheme, &
           dx, dy, dz, nx, ny, nz, iles, cs, delta, nu_t)
      call correct_pression(pp, ux_pred, uy_pred, uz_pred, dx, dy, dz, &
-          nx, ny, nz, dt, omega, eps, kmax, idyn, multigrid)
+          nx, ny, nz, dt, omega, eps, kmax, idyn, psolver)
      call correct_velocity(ux, uy, uz, ux_pred, uy_pred, uz_pred, &
           pp, dt, dx, dy, dz, nx, ny, nz)
      if (nscr == 1) then

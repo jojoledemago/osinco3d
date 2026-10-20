@@ -1,6 +1,19 @@
 module derivation
 
   implicit none
+
+  !> Common interface of all derivative routines. Use it to declare the
+  !> procedure pointers (derxp, derxi, derxxp, ...) in the calling module:
+  !>   procedure(deriv_if), pointer :: derxp => null()
+  !> Convention: "p" = even (pair) function, "i" = odd (impair) function.
+  abstract interface
+     subroutine deriv_if(df, f, d)
+       real(kind=8), intent(out) :: df(:,:,:)
+       real(kind=8), intent(in)  :: f(:,:,:)
+       real(kind=8), intent(in)  :: d
+     end subroutine deriv_if
+  end interface
+
 contains
 
   subroutine derx_00(df, f, dx)
@@ -83,7 +96,7 @@ contains
     b = 9.d0 / sixtydx
     c = 45.d0 / sixtydx
 
-    ! Boundary handling for periodic conditions
+    ! Boundary handling for free-slip conditions
     df(1, :, :) = 0.d0
     df(2, :, :) = a * (f(5, :, :) - f(3, :, :)) - &
          b * (f(4, :, :) - f(2, :, :)) + &
@@ -110,7 +123,7 @@ contains
 
   subroutine derxi_11(df, f, dx)
 
-    !> X first derivative of even function f with O(dx6) scheme
+    !> X first derivative of odd function f with O(dx6) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -218,7 +231,7 @@ contains
 
   subroutine deryp_11(df, f, dy)
 
-    !> Y first derivation of odd function f with O(dy6) scheme
+    !> Y first derivation of even function f with O(dy6) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -241,7 +254,7 @@ contains
     b = 9.d0 / sixtydy
     c = 45.d0 / sixtydy
 
-    ! Boundary handling for periodic conditions
+    ! Boundary handling for free-slip conditions
     df(:, 1, :) = 0.d0
     df(:, 2, :) = a * (f(:, 5, :) - f(:, 3, :)) - &
          b * (f(:, 4, :) - f(:, 2, :)) + &
@@ -268,7 +281,7 @@ contains
 
   subroutine deryi_11(df, f, dy)
 
-    !> Y first derivation of even function f with O(dy6) scheme
+    !> Y first derivation of odd function f with O(dy6) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -291,7 +304,7 @@ contains
     b = 9.d0 / sixtydy
     c = 45.d0 / sixtydy
 
-    ! Boundary handling for periodic conditions
+    ! Boundary handling for free-slip conditions
     df(:, 1, :) = a * (f(:, 4, :) + f(:, 4, :)) - &
          b * (f(:, 3, :) + f(:, 3, :)) + &
          c * (f(:, 2, :) + f(:, 2, :))
@@ -426,7 +439,7 @@ contains
 
   subroutine derzi_11(df, f, dz)
 
-    !> Z first derivative of even function f with O(dz6) scheme
+    !> Z first derivative of odd function f with O(dz6) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -543,7 +556,7 @@ contains
 
   subroutine derxxi_11(df, f, dx)
 
-    !> X second derivative of even function f with O(dx4) scheme
+    !> X second derivative of odd function f with O(dx4) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -592,7 +605,7 @@ contains
 
   subroutine derxxp_11(df, f, dx)
 
-    !> X second derivative of odd function f with O(dx4) scheme
+    !> X second derivative of even function f with O(dx4) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -646,7 +659,6 @@ contains
     !
     ! INPUT:  f(nx, ny, nz) : flow variable
     !         dy            : mesh size step
-    !         odd           : true if f is odd
     ! OUTPUT: df(nx, ny, nz): Y derivative of the flow variable
 
     real(kind=8), intent(in) :: f(:,:,:)
@@ -690,12 +702,11 @@ contains
 
   subroutine deryyp_11(df, f, dy)
 
-    ! Y second derivation of odd function f with O(dy4) scheme
+    ! Y second derivation of even function f with O(dy4) scheme
     ! Case for Free-slip boundary conditions
     !
     ! INPUT:  f(nx, ny, nz) : flow variable
     !         dy            : mesh size step
-    !         odd           : true if f is odd
     ! OUTPUT: df(nx, ny, nz): Y derivative of the flow variable
 
     real(kind=8), intent(in) :: f(:,:,:)
@@ -739,12 +750,11 @@ contains
 
   subroutine deryyi_11(df, f, dy)
 
-    ! Y second derivation of even function f with O(dy4) scheme
+    ! Y second derivation of odd function f with O(dy4) scheme
     ! Case for Free-slip boundary conditions
     !
     ! INPUT:  f(nx, ny, nz) : flow variable
     !         dy            : mesh size step
-    !         odd           : true if f is odd
     ! OUTPUT: df(nx, ny, nz): Y derivative of the flow variable
 
     real(kind=8), intent(in) :: f(:,:,:)
@@ -835,7 +845,7 @@ contains
 
   subroutine derzzi_11(df, f, dz)
 
-    !> Z second derivative of even function f with O(dz4) scheme
+    !> Z second derivative of odd function f with O(dz4) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -884,7 +894,7 @@ contains
 
   subroutine derzzp_11(df, f, dz)
 
-    !> Z second derivative of odd function f with O(dz4) scheme
+    !> Z second derivative of even function f with O(dz4) scheme
     !> Case for Free-slip boundary conditions
     !>
     !> INPUT:  f(nx, ny, nz) : flow variable
@@ -941,6 +951,7 @@ contains
     real(kind=8), intent(in) :: f(:,:,:)
     real(kind=8), intent(in) :: dz
     real(kind=8), intent(out) :: df(:,:,:)
+
 
     df = 0.d0 * f * dz
 

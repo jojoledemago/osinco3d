@@ -43,8 +43,8 @@ contains
          itscheme, dt, itstart, itstop, &
          u0, l0, re, typesim, omega, eps, kmax, &
          nfre, xpro, ypro, zpro, &
-         init_noise_x, init_noise_y, init_noise_z, ratio, &
-         iles, cs, idyn, nscr, sc
+         ici, init_noise_x, init_noise_y, init_noise_z, ratio, &
+         iles, cs, idyn, nscr, sc, psolver
     implicit none
 
     ! Separator pattern
@@ -93,14 +93,27 @@ contains
     print *, sep_line
     print *, " POISSON SOLVER PARAMETERS "
     print *, sep_line
-    write(*,'(A,F10.3)') " Relaxation parameter (omega): ", omega
-    write(*,'(A,E17.5)') " Convergence criterion (eps): ", eps
-    write(*,'(A,I10)') " Maximum iterations (kmax): ", kmax
-    if (idyn == 1) then
-       print *, "Dynamic procedure for omega: ON"
-    else 
-       print *, "Dynamic procedure for omega: OFF"
+    if (psolver == 0) then
+       write(*,'(A)') " Successive Over-Relaxation (SOR) method"
+       write(*,'(A,F10.3)') " Relaxation parameter (omega): ", omega
+       write(*,'(A,E17.5)') " Convergence criterion (eps): ", eps
+       write(*,'(A,I10)') " Maximum iterations (kmax): ", kmax
+       if (idyn == 1) then
+          print *, "Dynamic procedure for omega: ON"
+       else 
+          print *, "Dynamic procedure for omega: OFF"
+       end if
+    elseif (psolver == 1) then
+       write(*,'(A)') " Geometric multigrid (V-cycles)"
+       write(*,'(A,E17.5)') " Convergence criterion (eps): ", eps
+       write(*,'(A,I10)') " maximum number of V-cycles", kmax
+    elseif (psolver == 2) then
+       write(*,'(A)') " Direct (FFT based) solver for the 3D Poisson equation"
+    else
+       write(*,'(A)') " mutlgrid parameter must be 1 or 0"
+       stop
     end if
+
     print *, ""
 
     ! LES parameters (if relevant)
@@ -130,15 +143,17 @@ contains
     write(*,'(3F10.3)') xpro, ypro, zpro
     print *, ""
 
-    ! Inflow initialization parameters
-    print *, sep_line
-    print *, " INFLOW INITIALIZATION PARAMETERS "
-    print *, sep_line
-    write(*,'(A)') " Initialization noise intensity (init_noise_x, y, z): "
-    write(*,'(3F10.3)') init_noise_x, init_noise_y, init_noise_z
-    write(*,'(A,F10.3)') " Ratio: ", ratio
-    print *, sep_line
-    print *, ""
+    if (ici > 0) then
+       ! Inflow initialization parameters
+       print *, sep_line
+       print *, " INFLOW INITIALIZATION PARAMETERS "
+       print *, sep_line
+       write(*,'(A)') " Initialization noise intensity (init_noise_x, y, z): "
+       write(*,'(3F10.3)') init_noise_x, init_noise_y, init_noise_z
+       write(*,'(A,F10.3)') " Ratio: ", ratio
+       print *, sep_line
+       print *, ""
+    end if
 
   end subroutine print_parameters
 
@@ -310,14 +325,34 @@ contains
     print *, ""
   end subroutine print_divu_statistics
 
-  subroutine print_nu_t_statistics(nu_t_stats)
+  subroutine print_nu_t_statistics(nu_t_stats, nu)
     real(kind=8), dimension(6), intent(in) :: nu_t_stats
+    real(kind=8), intent(in) :: nu
 
-    print *, " Statistics of nu_t:"
+    print *, " Statistics of nu_t and SGS constraints:"
     write(*, '(A22, ES10.3, ES10.3, ES10.3)') &
          " nu_t min, max, mean:", nu_t_stats(1), nu_t_stats(2), nu_t_stats(3)
+    write(*, '(A22, ES10.3)') " nu_t max / nu      :", nu_t_stats(2) / nu
+    write(*, '(A22, ES10.3)') " <nu_t> / nu        :", nu_t_stats(3) / nu
+
   end subroutine print_nu_t_statistics
 
+  subroutine print_tau_ij_max_values(tau_ij)
+    real(kind=8), dimension(:,:,:,:), intent(in) :: tau_ij
+
+    write(*,'(A23,ES10.3)') ' Max |tau_xx,yy,zz| = ', &
+         maxval(abs(tau_ij(:,:,:,1:3)))
+    write(*,'(A23,ES10.3)') ' Max |tau_xy,xz,yz| = ', &
+         maxval(abs(tau_ij(:,:,:,4:6)))
+  end subroutine print_tau_ij_max_values
+
+  subroutine print_dtau_ij_dxj_max_values(dtau_dx, dtau_dy, dtau_dz)
+    real(kind=8), dimension(:,:,:), intent(in) :: dtau_dx, dtau_dy, dtau_dz
+
+    write(*,'(A21,ES10.3)') ' Max |div(tau)_x| = ', maxval(abs(dtau_dx))
+    write(*,'(A21,ES10.3)') ' Max |div(tau)_y| = ', maxval(abs(dtau_dy))
+    write(*,'(A21,ES10.3)') ' Max |div(tau)_z| = ', maxval(abs(dtau_dz))
+  end subroutine print_dtau_ij_dxj_max_values
 
   subroutine print_velocity_values(ux, uy, uz)
     real(kind=8), intent(in) :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
@@ -349,6 +384,13 @@ contains
     return
   end subroutine print_in_outflow_rate
 
+  subroutine print_turbulent_perturb(maxpux, maxpuy, maxpuz)
+    real(kind=8), intent(in) :: maxpux, maxpuy, maxpuz
+    write(*, '(A29, 3E13.5)') " max |u|, |v|, |w| perturb:", maxpux, maxpuy, maxpuz
+    print *, ""
+    return 
+  end subroutine print_turbulent_perturb
+
   subroutine print_cfl(cflx, cfly, cflz)
     real(kind=8), intent(in) :: cflx, cfly, cflz
     write(*, '(A23, 3E13.5)') "* CFL U, CFL V, CFL W:", cflx, cfly, cflz
@@ -356,6 +398,77 @@ contains
 
     return
   end subroutine print_cfl
+
+  subroutine print_hit_values(nu, urms_eff, umax, u0, relam, lambda, eta, eps, &
+       teddy, dxm, kcut, theta, kmod_err)
+    real(kind=8), intent(in) :: nu, urms_eff, umax, u0, relam, lambda, eta, eps
+    real(kind=8), intent(in) :: teddy, dxm, kcut, theta, kmod_err
+
+    write(*,'(A22,ES11.4)') " nu                = ", nu
+    write(*,'(A22,ES11.4)') " u'rms             = ", urms_eff
+    write(*,'(A22,F8.4)')   " umax/u0           = ", umax / u0
+    write(*,'(A22,F8.2)')   " Re_lambda         = ", relam
+    write(*,'(A22,ES11.4)') " lambda (Taylor)   = ", lambda
+    write(*,'(A22,ES11.4)') " eta (Kolmogorov)  = ", eta
+    write(*,'(A22,ES11.4)') " epsilon           = ", eps
+    write(*,'(A22,ES11.4)') " T_eddy (approx.)  = ", teddy
+    write(*,'(A22,F8.3)')   " eta/dx            = ", eta / dxm
+    write(*,'(A22,F8.3)')   " kcut*eta          = ", kcut * eta
+    write(*,'(A22,F8.3)')   " kcut*dx           = ", theta
+    write(*,'(A22,ES11.4)') " k_mod error@kcut  = ", kmod_err
+
+  end subroutine print_hit_values
+
+  subroutine hit_check_les_dns(eta, dxm, kpeak, les_on)
+
+    real(kind=8), intent(in) :: eta, dxm, kpeak
+    integer, intent(in) :: les_on     ! add as LAST dummy argument
+    logical :: les_flag
+    real(kind=8) :: kc_eff, keta, kc_over_kp
+    real(kind=8), parameter :: theta_eff = 1.5d0  ! FD6: k_mod error ~ 5 % at kc*dx = 1.5
+
+    ! --- replace the two WARNING tests by this block ---
+    les_flag = .false.
+    if (les_on == 1) les_flag = .true.        ! or use your module's LES flag
+
+    kc_eff     = theta_eff / dxm                  ! max accurately resolved wavenumber
+    keta       = kc_eff * eta
+    kc_over_kp = kc_eff / kpeak
+
+    print '(A,F8.3)', "  kc_eff*eta        = ", keta
+    print '(A,F8.3)', "  kc_eff/kpeak      = ", kc_over_kp
+    print *, "* Resolution assessment (6th-order FD, kc_eff = 1.5/dx)"
+
+    if (keta >= 1.5d0) then
+       print *, "  Regime: DNS (dissipative scales resolved)"
+       if (les_flag) &
+            print *, "  WARNING: LES model enabled but the grid resolves the dissipative ", &
+            "scales -> the SGS model only adds spurious dissipation; ", &
+            "run without model or use a coarser grid"
+    else if (keta >= 1.0d0) then
+       print *, "  Regime: marginal DNS (OK at t=0, but eta decreases by ~15-20 % ", &
+            "near the dissipation peak)"
+       if (les_flag) &
+            print *, "  WARNING: LES model enabled on a nearly-DNS grid; check nu_t/nu"
+    else
+       print *, "  Regime: under-resolved as DNS -> LES is required"
+       if (.not. les_flag) &
+            print *, "  WARNING: no SGS model: lower Re, refine the grid, or enable LES"
+       if (kc_over_kp < 3.d0) then
+          print *, "  WARNING: kc_eff < 3*kpeak -> energy-containing scales poorly ", &
+               "resolved; LES not meaningful, refine the grid"
+       else if (les_flag) then
+          if (keta < 0.3d0) then
+             print *, "  LES OK: cutoff well inside the inertial range"
+          else
+             print *, "  LES OK: cutoff near the start of the dissipative range ", &
+                  "(Smagorinsky will be sensitive to Cs)"
+          end if
+       end if
+    end if
+    print *, ""
+
+  end subroutine hit_check_les_dns
 
   subroutine save_fields(x, y, z, ux, uy, uz, pp, phi, nx, ny, nz, time, itime)
     !> Save the flow state in a binary file to eventually restart the 

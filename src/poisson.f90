@@ -257,8 +257,7 @@ contains
   subroutine poisson_solver_111111(pp, rhs, dx, dy, dz, nx, ny, nz, &
        omega, eps, kmax, idyn)
     !> Solve the Poisson equation using SOR method 
-    !> with free-slip boundary conditions in x and y directions and periodic 
-    !> in z.
+    !> with free-slip boundary conditions in x, y and z directions
     !
     !> INPUT:
     !> pp   : Initial guess and solution matrix for pressure

@@ -24,13 +24,17 @@ module initialization
   integer :: itscheme                !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
   real(kind=8) :: dt, cfl, cflx, cfly, cflz, cnu !> Time step size and CFL number
   real(kind=8), dimension(3) :: adt, bdt, cdt  !> Coefficients for the current and previous time steps in AB schemes
+  character(len=18), dimension(3), parameter :: cscheme = &
+       (/" Euler            ", &
+       " Adams-Bashforth 2", &
+       " Adams-Bashforth 3"/)
 
   ! Poisson resolution 
   real(kind=8) :: omega  !> relaxation parameter (SOR)
-  real(kind=8) :: eps    !> Convergence criteria
-  integer :: multigrid   !> if 1 multigrid solver else if 0 SOR solver
-  integer :: idyn        !> idyn = 1 : dynamic omega
-  integer :: kmax        !> Maximum iterations
+  real(kind=8) :: eps    !> Convergence criteria (SOR or multigrid)
+  integer :: idyn        !> idyn = 1 : dynamic omega (SOR)
+  integer :: kmax        !> Maximum iterations (SOR or multigrid)
+  integer :: psolver     !> Flag for poisson process method (0: SOR, 1: multigrid, 2: spectral)
 
   ! Flow parameters
   real(kind=8) :: re, sc, u0, l0, u_ref, t_ref
@@ -118,7 +122,7 @@ contains
     namelist /BoundaryConditions/ nbcx1, nbcxn, nbcy1, nbcyn, nbcz1, nbczn, sim2d
     namelist /AdvanceTime/ itscheme, dt, itstart, itstop, irestart
     namelist /FlowParam/ u0, l0, re, typesim, ratio
-    namelist /PoissonEq/ multigrid, omega, idyn, eps, kmax
+    namelist /PoissonEq/ omega, idyn, eps, kmax, psolver
     namelist /Scalar/ nscr, sc
     namelist /VisuParameters/ nfre, nsve, initstat, xpro, ypro, zpro
     namelist /InitInflow/ ici, init_noise_x, init_noise_y, init_noise_z

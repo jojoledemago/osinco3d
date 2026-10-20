@@ -1,0 +1,95 @@
+! -*- mode: f90 -*-
+
+!<--------------->!
+&FlowParam
+!<--------------->!
+typesim = 6 !> 0=Read fields.bin file, 1=Convected vortex, 2=Taylor-Green vortex, 3=Planar Jet, 4=Coplnanar Jet, 5=Mixing Layer, 6=Homogeneous isotropic turbulence
+l0 = 1.
+u0 = 1.
+re = 3200.0
+ratio = 5.00
+/End
+
+!<--------------->!
+&Domain
+!<--------------->!
+nx = 192
+ny = 192
+nz = 192
+
+! pi = 3.141592653589793
+xlx = 6.283185307179586 
+yly = 6.283185307179586 
+zlz = 6.283185307179586 
+
+x0 = 0. 
+y0 = 0. 
+z0 = 0.
+/End
+
+!<--------------->!
+&BoundaryConditions
+!<--------------->!
+nbcx1 = 0 
+nbcxn = 0  
+nbcy1 = 0  
+nbcyn = 0  
+nbcz1 = 0  
+nbczn = 0  
+sim2d = 0
+/End
+
+!<--------------->!
+&AdvanceTime
+!<--------------->!
+itscheme = 3 !> Numerical scheme for time integration: 1-Euler, 2-AB2, 3-AB3
+dt = 0.001
+irestart = 0
+itstart = 1
+itstop = 25000
+/End
+
+!<--------------->!
+&PoissonEq
+!<--------------->!
+omega = 1.999 !> SOR Coefficient, theorical optimised : 2./(1+np.sin(np.pi*Lx/Nx))
+idyn = 1 !> idyn = 1 : dynamic omega (SOR)
+eps = 1.e-06 !> Convergence criteria (SOR or multigrid)
+kmax = 500 !> Maximum iterations (SOR or multigrid)
+psolver = 2 !> Flag for poisson process method (0: SOR, 1: multigrid, 2: spectral)
+/End
+
+!<--------------->!
+&Scalar
+!<--------------->!
+nscr = 0 !> 1 for scalar equation resolution 
+sc = 1. !> Schmidt number
+/End
+
+!<--------------->!
+&VisuParameters
+!<--------------->!
+nfre = 500
+nsve = 2500
+initstat = 0 !> Time for beginng statistic save
+xpro = 3.141592653589793
+ypro = 3.141592653589793
+zpro = 3.141592653589793
+/End
+
+!<--------------->!
+&InitInflow
+!<--------------->!
+ici = 0 !> Noise on initial condition (0: nothing, 1:oscillations, 2: noise, 3: both)
+init_noise_x = 0.02  !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise_y = 0.02  !> Turbulence intensity (1=100%) !! Intiale condition
+init_noise_z = 0.02  !> Turbulence intensity (1=100%) !! Intiale condition
+/End
+
+!<--------------->!
+&LES
+!<--------------->!
+iles = 1
+cs  = 0.173 ! standard
+!cs = 0.15
+/End
